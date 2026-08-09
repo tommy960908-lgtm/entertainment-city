@@ -333,8 +333,8 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   <div class="account">
     <div class="balance"><small>餘額</small><strong id="xmTopBalance">10,000.00</strong></div>
     <div class="quick">
-      <a class="quick-link" href="#deposit-modal"><i>▣</i>存款</a>
-      <a class="quick-link" href="#withdraw-modal"><i>▤</i>提款</a>
+      <a class="quick-link" href="#deposit-modal" data-transaction-entry="deposit"><i>▣</i>存款</a>
+      <a class="quick-link" href="#withdraw-modal" data-transaction-entry="withdraw"><i>▤</i>提款</a>
     </div>
   </div>
 </header>
@@ -394,7 +394,7 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
 <nav class="bottom">
   <button class="navbtn active"><span>⌂</span>首頁</button>
   <button class="navbtn" onclick="openSheet('優惠','優惠中心 DEMO。')"><span>◇</span>優惠</button>
-  <a class="navbtn navlink" href="#deposit-modal"><span>▣</span>存款</a>
+  <a class="navbtn navlink" href="#deposit-modal" data-transaction-entry="deposit"><span>▣</span>存款</a>
   <button class="navbtn" onclick="openSheet('客服','客服中心 DEMO。')"><span>◎</span>客服</button>
   <button class="navbtn" onclick="openSheet('我的','會員中心 DEMO。')"><span>♙</span>我的</button>
 </nav>
@@ -584,20 +584,16 @@ function openGame(name){openSheet(name,'目前為首頁 Demo。之後可以把�
 
 <div class="auth-target" id="transfer-demo-modal">
   <div class="auth-card2">
-    <div class="auth-top2"><h3>轉帳資訊</h3><a class="auth-x" href="#">✕</a></div>
+    <div class="auth-top2"><h3>確認金額</h3><a class="auth-x" href="#">✕</a></div>
     <div class="money-info">
       <small>本次儲值金額</small>
       <strong id="xmTransferAmount"></strong>
     </div>
-    <div style="background:#080808;border:1px solid #4b4027;border-radius:12px;padding:15px;line-height:1.9">
-      <div style="color:#aaa;font-size:12px">請轉帳至</div>
-      <div>銀行代碼：<b style="color:#f0ca67">XXX</b></div>
-      <div>帳號：<b style="color:#f0ca67">0000000000000</b></div>
-    </div>
+    
     <div class="money-note" style="margin-top:14px">
       此為虛擬點數，不會產生實際交易
     </div>
-    <a href="#proof-upload-modal" class="auth-submit2" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:16px">完成</a>
+    <a href="#payment-wait-modal" id="xmPaymentDone" class="auth-submit2" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:16px" onclick="xmStartCountdown()">確定</a>
   </div>
 </div>
 
@@ -621,41 +617,6 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
 
 
-
-<div class="auth-target" id="proof-upload-modal">
-  <div class="auth-card2">
-    <div class="auth-top2">
-      <h3>上傳轉帳證明</h3>
-      <a class="auth-x" href="#">✕</a>
-    </div>
-
-    <form id="xmProofForm" action="#waiting-modal" method="get">
-      <div class="auth-field2">
-        <label>選擇轉帳證明圖片或檔案</label>
-        <input
-          id="xmProofFile"
-          name="proof"
-          type="file"
-          accept="image/*,.pdf,.doc,.docx"
-          required
-          style="padding:10px;height:auto"
-        >
-      </div>
-
-      <button
-        id="xmProofConfirm"
-        type="submit"
-        class="auth-submit2"
-        style="margin-top:14px">
-        確認
-      </button>
-
-      <div class="money-note">
-        此為虛擬點數，不會產生實際交易
-      </div>
-    </form>
-  </div>
-</div>
 
 <div class="auth-target" id="waiting-modal">
   <div class="auth-card2" style="text-align:center">
@@ -725,7 +686,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   <div class="auth-card2" style="text-align:center">
     <div style="font-size:54px;margin:10px 0">⚠️</div>
     <h3 style="color:#f1ca67;margin:6px 0 10px">餘額不足 無法提款</h3>
-    <a href="#withdraw-modal" class="auth-submit2 confirm-link">返回提款</a>
+    <a href="#withdraw-modal" data-transaction-entry="withdraw" class="auth-submit2 confirm-link">返回提款</a>
   </div>
 </div>
 
@@ -850,5 +811,241 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 </script>
 
 <div id="xmVersionBadge">XM-v0810-001</div>
+
+<div class="auth-target" id="payment-wait-modal">
+  <div class="auth-card2" style="text-align:center">
+    <div id="xmWaitIcon" style="font-size:50px;margin:6px 0">⏳</div>
+    <h3 id="xmWaitTitle" style="color:#f1ca67;margin:6px 0 12px">等待客服確認</h3>
+
+    <div id="xmPaymentCountdown" data-timer="active"
+         style="font-size:40px;font-weight:900;letter-spacing:2px;color:#fff;margin:12px 0">
+      01:00:00
+    </div>
+
+    <div id="xmWaitStatus"
+         style="font-size:16px;color:#c9c1b1;margin:6px 0 18px">
+      請聯絡客服領取付款資訊
+    </div>
+
+    <div class="money-note" style="margin-bottom:14px">
+      此為虛擬點數，不會產生實際交易
+    </div>
+
+    <a href="#" class="auth-submit2 confirm-link">返回首頁</a>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+<div class="auth-target" id="transaction-pending-modal">
+  <div class="auth-card2" style="text-align:center">
+    <div style="font-size:52px;margin:8px 0">⏳</div>
+    <h3 style="color:#f1ca67;margin:8px 0 12px">上一筆交易尚未完成</h3>
+    <p style="color:#bbb;line-height:1.7;margin:0 0 18px">
+      請等待上一筆交易完成後再進行新的存款或提款
+    </p>
+    <a href="#" class="auth-submit2 confirm-link">返回首頁</a>
+  </div>
+</div>
+
+
+
+
+
+<script id="xm-payment-countdown-script">
+(function(){
+  "use strict";
+
+  var LOCK_KEY = "xm_active_transaction_until";
+  var TYPE_KEY = "xm_active_transaction_type";
+  var timer = null;
+
+  function now(){ return Date.now(); }
+
+  function getLockUntil(){
+    return Number(localStorage.getItem(LOCK_KEY) || 0);
+  }
+
+  function isLocked(){
+    var until = getLockUntil();
+    if(!until) return false;
+
+    if(now() >= until){
+      clearLock();
+      return false;
+    }
+    return true;
+  }
+
+  function createLock(type){
+    var until = now() + 60 * 60 * 1000;
+    localStorage.setItem(LOCK_KEY, String(until));
+    localStorage.setItem(TYPE_KEY, type || "transaction");
+    return until;
+  }
+
+  function clearLock(){
+    localStorage.removeItem(LOCK_KEY);
+    localStorage.removeItem(TYPE_KEY);
+    if(timer){
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  /* 給未來後台人工解鎖使用 */
+  window.xmAdminReleaseTransaction = clearLock;
+  window.xmTransactionLocked = isLocked;
+
+  function isTransactionEntry(el){
+    while(el && el !== document){
+      if(el.tagName === "A"){
+        var href = el.getAttribute("href") || "";
+        if(href === "#deposit-modal" || href === "#withdraw-modal"){
+          return true;
+        }
+      }
+
+      if(el.tagName === "BUTTON"){
+        var oc = el.getAttribute("onclick") || "";
+        if(oc.indexOf("deposit-modal") !== -1 || oc.indexOf("withdraw-modal") !== -1){
+          return true;
+        }
+      }
+
+      el = el.parentNode;
+    }
+    return false;
+  }
+
+  /* 捕獲階段攔截，優先於其他 click / onclick */
+  document.addEventListener("click", function(e){
+    if(!isTransactionEntry(e.target)) return;
+
+    if(isLocked()){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      location.hash = "transaction-pending-modal";
+      return false;
+    }
+  }, true);
+
+  function formatTime(total){
+    total = Math.max(0, total);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    function pad(n){ return n < 10 ? "0" + n : String(n); }
+    return pad(h) + ":" + pad(m) + ":" + pad(s);
+  }
+
+  function renderCountdown(){
+    var box = document.getElementById("xmPaymentCountdown");
+    var title = document.getElementById("xmWaitTitle");
+    var status = document.getElementById("xmWaitStatus");
+    var icon = document.getElementById("xmWaitIcon");
+
+    var until = getLockUntil();
+    if(!until){
+      if(box) box.textContent = "01:00:00";
+      return;
+    }
+
+    var remaining = Math.ceil((until - now()) / 1000);
+
+    if(remaining <= 0){
+      if(box) box.textContent = "00:00:00";
+      if(title) title.textContent = "交易失敗";
+      if(status) status.textContent = "交易失敗";
+      if(icon) icon.textContent = "✕";
+      clearLock();
+      return;
+    }
+
+    if(box) box.textContent = formatTime(remaining);
+    if(title) title.textContent = "等待客服確認";
+    if(status) status.textContent = "請聯絡客服領取付款資訊";
+    if(icon) icon.textContent = "⏳";
+  }
+
+  function startTimer(){
+    if(timer) clearInterval(timer);
+    renderCountdown();
+    timer = setInterval(renderCountdown, 1000);
+  }
+
+  /* 存款：按確認金額頁的「確定」時正式建立鎖 */
+  document.addEventListener("click", function(e){
+    var el = e.target;
+    while(el && el !== document){
+      if(el.id === "xmPaymentDone"){
+        if(isLocked()){
+          e.preventDefault();
+          e.stopPropagation();
+          if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+          location.hash = "transaction-pending-modal";
+          return false;
+        }
+
+        createLock("deposit");
+        startTimer();
+        return;
+      }
+      el = el.parentNode;
+    }
+  }, true);
+
+  /* 提款：只要真正進入等待客服頁，就建立提款鎖 */
+  window.addEventListener("hashchange", function(){
+    if(location.hash === "#withdraw-waiting-modal"){
+      if(!isLocked()){
+        createLock("withdraw");
+      }
+      startTimer();
+    }
+
+    if(location.hash === "#payment-wait-modal"){
+      if(!isLocked()){
+        createLock("deposit");
+      }
+      startTimer();
+    }
+  });
+
+  /* 頁面重開 / 重新整理也保留鎖 */
+  window.addEventListener("load", function(){
+    if(isLocked()){
+      startTimer();
+    }
+
+    if(location.hash === "#payment-wait-modal" && !isLocked()){
+      createLock("deposit");
+      startTimer();
+    }
+
+    if(location.hash === "#withdraw-waiting-modal" && !isLocked()){
+      createLock("withdraw");
+      startTimer();
+    }
+  });
+
+  /* 定期清除過期鎖，即使不在倒數頁 */
+  setInterval(function(){
+    if(getLockUntil() && !isLocked()){
+      clearLock();
+    }
+  }, 1000);
+
+})();
+</script>
+
 </body>
 </html>
