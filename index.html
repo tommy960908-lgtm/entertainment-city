@@ -1094,6 +1094,110 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   font-size:15px;
 }
 
+
+.xm-rebate-detail-btn{
+  display:block;
+  text-decoration:none;
+}
+.xm-rebate-history-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-rebate-history-shell{
+  width:min(100%,1050px);
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 10%,rgba(194,142,36,.12),transparent 30%),
+    linear-gradient(180deg,#0a0805,#050505 72%);
+}
+.xm-rebate-history-header{
+  height:62px;
+  flex:0 0 62px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #332714;
+  background:rgba(5,5,5,.97);
+  padding-top:env(safe-area-inset-top);
+}
+.xm-rebate-history-header h2{
+  margin:0;
+  color:#f1ca67;
+  text-align:center;
+  font-size:20px;
+}
+.xm-rebate-history-back{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#f0ca67;
+  text-decoration:none;
+  font-size:34px;
+}
+.xm-rebate-history-scroll{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:18px 14px 100px;
+}
+.xm-rebate-history-card{
+  border:1px solid #46371e;
+  background:linear-gradient(180deg,#12100c,#090909);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:10px;
+}
+.xm-rebate-history-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.xm-rebate-history-title{
+  color:#fff;
+  font-size:16px;
+  font-weight:900;
+}
+.xm-rebate-history-amount{
+  color:#f0ca67;
+  font-size:20px;
+  font-weight:900;
+}
+.xm-rebate-history-meta{
+  margin-top:8px;
+  color:#918878;
+  font-size:12px;
+  line-height:1.6;
+}
+.xm-rebate-history-status{
+  display:inline-flex;
+  margin-top:10px;
+  padding:5px 9px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+  border:1px solid #5a4826;
+  color:#dfbd63;
+  background:#171208;
+}
+.xm-rebate-history-status.expired{
+  border-color:#5b2d2d;
+  color:#e18c8c;
+  background:#180b0b;
+}
+.xm-rebate-history-empty{
+  text-align:center;
+  color:#726b5e;
+  padding:42px 10px;
+  font-size:13px;
+}
+
 </style>
 </head>
 <body>
@@ -2559,7 +2663,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
         立即領取
       </button>
 
-      <div class="xm-rebate-detail-link">查看返水明細 ›</div>
+      <a class="xm-rebate-detail-link xm-rebate-detail-btn" href="#rebate-history-modal">查看返水明細 ›</a>
 
       <section class="xm-rebate-tips">
         <h3>溫馨提示</h3>
@@ -2704,6 +2808,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
 
 
+
 <script id="xm-rebate-script">
 (function(){
   "use strict";
@@ -2729,6 +2834,11 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     return u ? "xm_rebate_turnover_"+u : "";
   }
 
+  function rebateHistoryKey(){
+    var u=currentUser();
+    return u ? "xm_rebate_history_"+u : "";
+  }
+
   function readUsers(){
     try{
       return JSON.parse(localStorage.getItem("xm_demo_users") || "{}");
@@ -2739,6 +2849,36 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
   function writeUsers(users){
     localStorage.setItem("xm_demo_users",JSON.stringify(users));
+  }
+
+  function readHistory(){
+    var key=rebateHistoryKey();
+    if(!key) return [];
+    try{
+      var arr=JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function writeHistory(arr){
+    var key=rebateHistoryKey();
+    if(!key) return;
+    localStorage.setItem(key,JSON.stringify(arr));
+  }
+
+  function addHistory(type, amount, issuedAt){
+    if(!(Number(amount)>0)) return;
+    var arr=readHistory();
+    arr.unshift({
+      id:"rebate_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+      type:type,
+      amount:Number(amount),
+      issuedAt:Number(issuedAt)||Date.now(),
+      finishedAt:Date.now()
+    });
+    writeHistory(arr);
   }
 
   function rawRebate(){
@@ -2755,15 +2895,16 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     var timeKey=rebateTimeKey();
     var issuedAt=Number(localStorage.getItem(timeKey) || 0);
 
-    /* 舊資料若沒有發放時間，從這版第一次讀取時開始計算48小時 */
     if(!issuedAt){
       issuedAt=Date.now();
       localStorage.setItem(timeKey,String(issuedAt));
     }
 
     if(Date.now()-issuedAt >= EXPIRE_MS){
+      addHistory("expired", amount, issuedAt);
       localStorage.setItem(rebateKey(),"0");
       localStorage.removeItem(timeKey);
+      if(window.xmRenderRebateHistory) window.xmRenderRebateHistory();
       return 0;
     }
 
@@ -2834,6 +2975,8 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
       var rebate=expireRebateIfNeeded();
       if(!(rebate>0)) return;
 
+      var issuedAt=Number(localStorage.getItem(rebateTimeKey()) || Date.now());
+
       var users=readUsers();
       if(!users[user]) return;
 
@@ -2843,16 +2986,19 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
       users[user].balance=next;
       writeUsers(users);
 
-      /* 1倍流水：領多少返水，就記錄多少待完成流水 */
       var oldTurnover=Number(localStorage.getItem(turnoverKey()) || 0);
       localStorage.setItem(
         turnoverKey(),
         String(Math.round((oldTurnover+rebate)*100)/100)
       );
 
+      addHistory("claimed", rebate, issuedAt);
       writeRebate(0);
+
       paintBalance(next);
       render();
+
+      if(window.xmRenderRebateHistory) window.xmRenderRebateHistory();
     });
   }
 
@@ -2866,7 +3012,6 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     }
   });
 
-  /* 每分鐘檢查一次是否已超過48小時 */
   setInterval(function(){
     if(currentUser()){
       expireRebateIfNeeded();
@@ -2877,7 +3022,6 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   window.addEventListener("load",render);
   window.xmRenderRebate=render;
 
-  /* 未來後台發放返水時呼叫這個方法，會從發放當下開始計算48小時 */
   window.xmSetRebateForCurrentUser=function(amount){
     if(!currentUser()) return false;
     writeRebate(Number(amount)||0);
@@ -2888,6 +3032,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   render();
 })();
 </script>
+
 
 
 
@@ -2931,6 +3076,111 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     </div>
   </div>
 </div>
+
+
+<div class="auth-target xm-rebate-history-page" id="rebate-history-modal">
+  <div class="xm-rebate-history-shell">
+    <div class="xm-rebate-history-header">
+      <a href="#rebate-modal" class="xm-rebate-history-back">‹</a>
+      <h2>返水明細</h2>
+      <div></div>
+    </div>
+
+    <div class="xm-rebate-history-scroll">
+      <div id="xmRebateHistoryList"></div>
+      <div id="xmRebateHistoryEmpty" class="xm-rebate-history-empty">目前沒有返水紀錄</div>
+    </div>
+  </div>
+</div>
+
+
+<script id="xm-rebate-history-script">
+(function(){
+  "use strict";
+
+  function currentUser(){
+    return localStorage.getItem("xm_demo_session") || "";
+  }
+
+  function key(){
+    var u=currentUser();
+    return u ? "xm_rebate_history_"+u : "";
+  }
+
+  function readHistory(){
+    var k=key();
+    if(!k) return [];
+    try{
+      var arr=JSON.parse(localStorage.getItem(k) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function money(v){
+    return Number(v||0).toLocaleString("en-US",{
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function dateText(ts){
+    var d=new Date(ts);
+    return d.getFullYear()+"/"+
+      String(d.getMonth()+1).padStart(2,"0")+"/"+
+      String(d.getDate()).padStart(2,"0")+" "+
+      String(d.getHours()).padStart(2,"0")+":"+
+      String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function render(){
+    var list=document.getElementById("xmRebateHistoryList");
+    var empty=document.getElementById("xmRebateHistoryEmpty");
+    if(!list || !empty) return;
+
+    if(!currentUser()){
+      list.innerHTML="";
+      empty.style.display="block";
+      return;
+    }
+
+    var arr=readHistory();
+
+    list.innerHTML=arr.map(function(item){
+      var expired=item.type==="expired";
+      var status=expired ? "已過期" : "已領取";
+      var title=expired ? "過期返水" : "領取返水";
+
+      return ''+
+        '<div class="xm-rebate-history-card">'+
+          '<div class="xm-rebate-history-top">'+
+            '<div class="xm-rebate-history-title">'+title+'</div>'+
+            '<div class="xm-rebate-history-amount">'+money(item.amount)+'</div>'+
+          '</div>'+
+          '<div class="xm-rebate-history-meta">'+
+            '發放時間：'+dateText(item.issuedAt)+'<br>'+
+            (expired ? '過期時間：' : '領取時間：')+dateText(item.finishedAt)+
+          '</div>'+
+          '<div class="xm-rebate-history-status '+(expired?'expired':'')+'">'+status+'</div>'+
+        '</div>';
+    }).join("");
+
+    empty.style.display=arr.length ? "none" : "block";
+  }
+
+  window.addEventListener("hashchange",function(){
+    if(location.hash==="#rebate-history-modal"){
+      render();
+    }
+  });
+
+  window.addEventListener("load",render);
+  window.xmRenderRebateHistory=render;
+
+  render();
+})();
+</script>
 
 </body>
 </html>
