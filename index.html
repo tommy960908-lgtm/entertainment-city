@@ -407,6 +407,32 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   </div>
 </div>
 
+
+<script id="xm-test-account-seed">
+(function(){
+  try{
+    var users = JSON.parse(localStorage.getItem("xm_demo_users") || "{}");
+
+    /* 預設測試帳號：只在不存在時建立，不覆蓋既有餘額 */
+    if(!users["test001"]){
+      users["test001"] = {
+        password: "123456",
+        balance: 10000
+      };
+      localStorage.setItem("xm_demo_users", JSON.stringify(users));
+    }
+  }catch(e){
+    var users = {
+      "test001":{
+        password:"123456",
+        balance:10000
+      }
+    };
+    localStorage.setItem("xm_demo_users", JSON.stringify(users));
+  }
+})();
+</script>
+
 <script>
 function openSheet(title,body){document.getElementById('sheetTitle').textContent=title;document.getElementById('sheetBody').textContent=body;document.getElementById('sheet').classList.add('open')}
 function closeSheet(){document.getElementById('sheet').classList.remove('open')}
