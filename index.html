@@ -321,6 +321,226 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   line-height:1;
 }
 
+
+.xm-history-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-history-shell{
+  width:min(100%,1050px);
+  height:100%;
+  background:radial-gradient(circle at 50% -20%,#241604 0,#090806 30%,#050505 75%);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.xm-history-header{
+  height:64px;
+  flex:0 0 64px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #382b17;
+  background:rgba(5,5,5,.96);
+  padding-top:env(safe-area-inset-top);
+}
+.xm-history-header h2{
+  margin:0;
+  text-align:center;
+  font-size:20px;
+  color:#f2cf6b;
+}
+.xm-history-back{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  color:#f0ca67;
+  font-size:34px;
+  text-decoration:none;
+}
+.xm-history-scroll{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:16px 14px 100px;
+}
+.xm-history-section-title{
+  color:#c9b88c;
+  font-size:13px;
+  font-weight:800;
+  margin:5px 0 9px;
+}
+.xm-tx-card{
+  border:1px solid #46371e;
+  background:linear-gradient(180deg,#12100c,#090909);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:10px;
+}
+.xm-tx-card.active{
+  border-color:#b88a2d;
+  box-shadow:0 0 0 1px rgba(230,185,79,.14),0 8px 28px rgba(0,0,0,.32);
+}
+.xm-tx-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.xm-tx-type{
+  font-size:17px;
+  font-weight:900;
+  color:#fff;
+}
+.xm-tx-amount{
+  font-size:20px;
+  font-weight:900;
+  color:#f0ca67;
+}
+.xm-tx-meta{
+  margin-top:8px;
+  color:#918878;
+  font-size:12px;
+  line-height:1.6;
+}
+.xm-tx-status{
+  display:inline-flex;
+  align-items:center;
+  margin-top:10px;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:11px;
+  font-weight:900;
+  border:1px solid #5a4826;
+  color:#dfbd63;
+  background:#171208;
+}
+.xm-tx-status.failed{
+  border-color:#5b2d2d;
+  color:#e18c8c;
+  background:#180b0b;
+}
+.xm-tx-countdown{
+  margin-top:12px;
+  padding:11px;
+  border-radius:10px;
+  background:#050505;
+  border:1px solid #3a2d17;
+  text-align:center;
+  font-size:27px;
+  font-weight:900;
+  letter-spacing:1px;
+  color:#fff;
+}
+.xm-tx-countdown small{
+  display:block;
+  color:#9e947f;
+  font-size:10px;
+  letter-spacing:0;
+  font-weight:600;
+  margin-bottom:4px;
+}
+.xm-history-empty{
+  text-align:center;
+  color:#726b5e;
+  padding:42px 10px;
+  font-size:13px;
+}
+
+
+.xm-service-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-service-shell{
+  width:min(100%,1050px);
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background:radial-gradient(circle at 50% -20%,#241604 0,#090806 30%,#050505 75%);
+}
+.xm-service-header{
+  height:64px;
+  flex:0 0 64px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #382b17;
+  background:rgba(5,5,5,.96);
+  padding-top:env(safe-area-inset-top);
+}
+.xm-service-header h2{
+  margin:0;
+  text-align:center;
+  color:#f2cf6b;
+  font-size:20px;
+}
+.xm-service-back{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#f0ca67;
+  font-size:34px;
+  text-decoration:none;
+}
+.xm-service-body{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  text-align:center;
+  padding:54px 20px 100px;
+}
+.xm-service-icon{
+  width:74px;
+  height:74px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:38px;
+  color:#f0ca67;
+  border:1px solid #5b4723;
+  background:#100d07;
+  margin-bottom:18px;
+}
+.xm-service-body h3{
+  color:#fff;
+  font-size:23px;
+  margin:0 0 12px;
+}
+.xm-service-body p{
+  color:#aaa08f;
+  font-size:15px;
+  line-height:1.8;
+  margin:0 0 26px;
+}
+.xm-line-card{
+  width:min(100%,420px);
+  border:1px solid #4a391d;
+  border-radius:14px;
+  background:linear-gradient(180deg,#12100c,#090909);
+  padding:18px;
+}
+.xm-line-label{
+  color:#8f8676;
+  font-size:12px;
+  margin-bottom:7px;
+}
+.xm-line-id{
+  color:#f0ca67;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+
 </style>
 </head>
 <body>
@@ -393,9 +613,9 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
 
 <nav class="bottom">
   <button class="navbtn active"><span>⌂</span>首頁</button>
-  <button class="navbtn" onclick="openSheet('優惠','優惠中心 DEMO。')"><span>◇</span>優惠</button>
+  <a class="navbtn navlink" id="xmHistoryNav" href="#transaction-history-modal"><span>☷</span>交易紀錄</a>
   <a class="navbtn navlink" href="#deposit-modal" data-transaction-entry="deposit"><span>▣</span>存款</a>
-  <button class="navbtn" onclick="openSheet('客服','客服中心 DEMO。')"><span>◎</span>客服</button>
+  <a class="navbtn navlink" href="#customer-service-modal"><span>♧</span>客服</a>
   <button class="navbtn" onclick="openSheet('我的','會員中心 DEMO。')"><span>♙</span>我的</button>
 </nav>
 
@@ -1211,6 +1431,308 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
       登入後才能使用存款與提款功能
     </p>
     <a href="#login-modal" class="auth-submit2 confirm-link">前往登入</a>
+  </div>
+</div>
+
+
+<div class="auth-target xm-history-page" id="transaction-history-modal">
+  <div class="xm-history-shell">
+    <div class="xm-history-header">
+      <a href="#" class="xm-history-back">‹</a>
+      <h2>交易紀錄</h2>
+      <div class="xm-history-spacer"></div>
+    </div>
+
+    <div class="xm-history-scroll">
+      <section id="xmActiveTxSection" style="display:none">
+        <div class="xm-history-section-title">進行中的交易</div>
+        <div id="xmActiveTxCard"></div>
+      </section>
+
+      <section>
+        <div class="xm-history-section-title">歷史交易紀錄</div>
+        <div id="xmHistoryList"></div>
+        <div id="xmHistoryEmpty" class="xm-history-empty">目前沒有交易紀錄</div>
+      </section>
+    </div>
+  </div>
+</div>
+
+
+<script id="xm-transaction-history-script">
+(function(){
+  "use strict";
+
+  var HISTORY_PREFIX = "xm_tx_history_v1_";
+  var CURRENT_KEY = "xm_tx_current_v1";
+  var LOCK_KEYS = [
+    "xm_active_transaction_until",
+    "xm_transaction_lock_until",
+    "xm_payment_wait_deadline_v2",
+    "xm_payment_wait_deadline"
+  ];
+
+  function userKey(){
+    return localStorage.getItem("xm_demo_session") || "guest";
+  }
+
+  function historyKey(){
+    return HISTORY_PREFIX + userKey();
+  }
+
+  function readHistory(){
+    try{
+      var a = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+      return Array.isArray(a) ? a : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function writeHistory(a){
+    localStorage.setItem(historyKey(), JSON.stringify(a));
+  }
+
+  function readCurrent(){
+    try{
+      var x = JSON.parse(localStorage.getItem(CURRENT_KEY) || "null");
+      if(x && x.user === userKey()) return x;
+    }catch(e){}
+    return null;
+  }
+
+  function writeCurrent(x){
+    if(x) localStorage.setItem(CURRENT_KEY, JSON.stringify(x));
+    else localStorage.removeItem(CURRENT_KEY);
+  }
+
+  function getLockUntil(){
+    var best = 0;
+    LOCK_KEYS.forEach(function(k){
+      var n = Number(localStorage.getItem(k) || sessionStorage.getItem(k) || 0);
+      if(n > best) best = n;
+    });
+    return best;
+  }
+
+  function fmtAmount(n){
+    return Number(n || 0).toLocaleString("en-US",{
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function fmtDate(ts){
+    var d = new Date(ts);
+    return d.getFullYear()+"/"+
+      String(d.getMonth()+1).padStart(2,"0")+"/"+
+      String(d.getDate()).padStart(2,"0")+" "+
+      String(d.getHours()).padStart(2,"0")+":"+
+      String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function fmtTime(ms){
+    var sec = Math.max(0,Math.ceil(ms/1000));
+    var h = Math.floor(sec/3600);
+    var m = Math.floor((sec%3600)/60);
+    var s = sec%60;
+    return String(h).padStart(2,"0")+":"+
+      String(m).padStart(2,"0")+":"+
+      String(s).padStart(2,"0");
+  }
+
+  function uniqueId(){
+    return "tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);
+  }
+
+  function currentDepositAmount(){
+    var el = document.getElementById("xmTransferAmount");
+    if(el){
+      var n = Number(String(el.textContent || "").replace(/,/g,""));
+      if(n > 0) return n;
+    }
+    var input = document.getElementById("xmDepositAmount");
+    return Number(input && input.value || 0);
+  }
+
+  function currentWithdrawAmount(){
+    var input = document.getElementById("xmWithdrawAmount");
+    return Number(input && input.value || 0);
+  }
+
+  function addCurrent(type, amount){
+    if(!localStorage.getItem("xm_demo_session")) return;
+    if(!(Number(amount) > 0)) return;
+
+    var existing = readCurrent();
+    if(existing && existing.status === "pending") return;
+
+    var until = getLockUntil();
+    if(!(until > Date.now())) until = Date.now() + 60*60*1000;
+
+    var tx = {
+      id: uniqueId(),
+      user: userKey(),
+      type: type,
+      amount: Number(amount),
+      createdAt: Date.now(),
+      deadline: until,
+      status: "pending"
+    };
+    writeCurrent(tx);
+    render();
+  }
+
+  function finalizeExpired(){
+    var tx = readCurrent();
+    if(!tx || tx.status !== "pending") return;
+
+    if(Date.now() >= Number(tx.deadline || 0)){
+      tx.status = "failed";
+      tx.finishedAt = Date.now();
+
+      var list = readHistory();
+      list.unshift(tx);
+      writeHistory(list);
+      writeCurrent(null);
+    }
+  }
+
+  function cardHtml(tx, active){
+    var typeName = tx.type === "withdraw" ? "提款" : "存款";
+    var sign = tx.type === "withdraw" ? "−" : "+";
+    var statusText = active ? "處理中" : (tx.status === "failed" ? "交易失敗" : "已完成");
+    var statusClass = (!active && tx.status === "failed") ? " failed" : "";
+
+    var html =
+      '<div class="xm-tx-card'+(active?' active':'')+'">'+
+        '<div class="xm-tx-top">'+
+          '<div><div class="xm-tx-type">'+typeName+'</div></div>'+
+          '<div class="xm-tx-amount">'+sign+fmtAmount(tx.amount)+'</div>'+
+        '</div>'+
+        '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
+        '<div class="xm-tx-status'+statusClass+'">'+statusText+'</div>';
+
+    if(active){
+      html +=
+        '<div class="xm-tx-countdown">'+
+          '<small>剩餘處理時間</small>'+
+          '<span id="xmHistoryCountdown">'+fmtTime(Number(tx.deadline)-Date.now())+'</span>'+
+        '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function render(){
+    finalizeExpired();
+
+    var activeSection = document.getElementById("xmActiveTxSection");
+    var activeCard = document.getElementById("xmActiveTxCard");
+    var listEl = document.getElementById("xmHistoryList");
+    var empty = document.getElementById("xmHistoryEmpty");
+    if(!activeSection || !activeCard || !listEl || !empty) return;
+
+    var current = readCurrent();
+    if(current && current.status === "pending"){
+      activeSection.style.display = "block";
+      activeCard.innerHTML = cardHtml(current,true);
+    }else{
+      activeSection.style.display = "none";
+      activeCard.innerHTML = "";
+    }
+
+    var list = readHistory();
+    listEl.innerHTML = list.map(function(tx){return cardHtml(tx,false)}).join("");
+    empty.style.display = list.length ? "none" : "block";
+  }
+
+  /* Deposit: when the user lands on the one-hour wait page */
+  window.addEventListener("hashchange",function(){
+    if(location.hash === "#payment-wait-modal"){
+      setTimeout(function(){
+        addCurrent("deposit", currentDepositAmount());
+      },30);
+    }
+
+    if(location.hash === "#withdraw-waiting-modal"){
+      setTimeout(function(){
+        var candidate = Number(sessionStorage.getItem("xm_history_withdraw_candidate") || 0);
+        addCurrent("withdraw", candidate || currentWithdrawAmount());
+        sessionStorage.removeItem("xm_history_withdraw_candidate");
+      },30);
+    }
+
+    if(location.hash === "#transaction-history-modal"){
+      render();
+    }
+  });
+
+  /* Capture withdrawal amount before existing scripts navigate away */
+  document.addEventListener("click",function(e){
+    var el = e.target;
+    while(el && el !== document){
+      if(el.id === "xmWithdrawConfirm"){
+        var a = currentWithdrawAmount();
+        if(a > 0) sessionStorage.setItem("xm_history_withdraw_candidate",String(a));
+        break;
+      }
+      el = el.parentNode;
+    }
+  },true);
+
+  /* If deposit confirmation itself is clicked, keep the amount as fallback */
+  document.addEventListener("click",function(e){
+    var el=e.target;
+    while(el && el!==document){
+      if(el.id === "xmPaymentDone"){
+        var a=currentDepositAmount();
+        if(a>0) sessionStorage.setItem("xm_history_deposit_candidate",String(a));
+        break;
+      }
+      el=el.parentNode;
+    }
+  },true);
+
+  setInterval(function(){
+    finalizeExpired();
+
+    var tx = readCurrent();
+    var c = document.getElementById("xmHistoryCountdown");
+    if(tx && tx.status === "pending" && c){
+      c.textContent = fmtTime(Number(tx.deadline)-Date.now());
+    }
+
+    if(location.hash === "#transaction-history-modal"){
+      render();
+    }
+  },1000);
+
+  window.xmRenderTransactionHistory = render;
+  render();
+})();
+</script>
+
+
+<div class="auth-target xm-service-page" id="customer-service-modal">
+  <div class="xm-service-shell">
+    <div class="xm-service-header">
+      <a href="#" class="xm-service-back">‹</a>
+      <h2>客服中心</h2>
+      <div></div>
+    </div>
+
+    <div class="xm-service-body">
+      <div class="xm-service-icon">♧</div>
+      <h3>聯絡客服</h3>
+      <p>任何存款、提款等問題請聯絡客服</p>
+
+      <div class="xm-line-card">
+        <div class="xm-line-label">客服 Line ID</div>
+        <div class="xm-line-id">tommy_00908</div>
+      </div>
+    </div>
   </div>
 </div>
 
