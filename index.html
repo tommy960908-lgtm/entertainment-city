@@ -300,6 +300,27 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   pointer-events:none;
 }
 
+
+.bottom .navlink{
+  text-decoration:none;
+  color:#aaa;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  gap:3px;
+  border:0;
+  background:none;
+  min-width:0;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.bottom .navlink span{
+  font-size:22px;
+  line-height:1;
+}
+
 </style>
 </head>
 <body>
@@ -373,7 +394,7 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
 <nav class="bottom">
   <button class="navbtn active"><span>⌂</span>首頁</button>
   <button class="navbtn" onclick="openSheet('優惠','優惠中心 DEMO。')"><span>◇</span>優惠</button>
-  <button class="navbtn" onclick="openSheet('存款','測試點數模式。')"><span>▣</span>存款</button>
+  <a class="navbtn navlink" href="#deposit-modal"><span>▣</span>存款</a>
   <button class="navbtn" onclick="openSheet('客服','客服中心 DEMO。')"><span>◎</span>客服</button>
   <button class="navbtn" onclick="openSheet('我的','會員中心 DEMO。')"><span>♙</span>我的</button>
 </nav>
