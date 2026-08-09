@@ -1198,6 +1198,46 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   font-size:13px;
 }
 
+
+/* 全站固定底部導覽列 */
+#xmGlobalBottomNav{
+  position:fixed!important;
+  left:50%!important;
+  bottom:0!important;
+  transform:translateX(-50%)!important;
+  width:min(100%,1050px)!important;
+  z-index:2147483000!important;
+  display:grid!important;
+  grid-template-columns:repeat(5,1fr)!important;
+  padding-bottom:env(safe-area-inset-bottom)!important;
+  background:rgba(7,7,7,.97)!important;
+  border-top:1px solid #3b2d18!important;
+  box-shadow:0 -8px 24px rgba(0,0,0,.34)!important;
+}
+#xmGlobalBottomNav .navbtn{
+  min-width:0!important;
+  text-decoration:none!important;
+  -webkit-tap-highlight-color:transparent;
+}
+#xmGlobalBottomNav .navbtn.active,
+#xmGlobalBottomNav .navbtn.active span{
+  color:#f0c75f!important;
+}
+#xmGlobalBottomNav .navbtn:not(.active),
+#xmGlobalBottomNav .navbtn:not(.active) span{
+  color:#8d8679!important;
+}
+/* 所有站內全頁畫面預留底部導覽高度 */
+.auth-target:target,
+.xm-history-page:target,
+.xm-service-page:target,
+.xm-profile-page:target,
+.xm-rebate-page:target,
+.xm-rebate-rate-page:target,
+.xm-rebate-history-page:target{
+  padding-bottom:74px!important;
+}
+
 </style>
 </head>
 <body>
@@ -1275,12 +1315,12 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
 
 </div>
 
-<nav class="bottom">
-  <button class="navbtn active"><span>⌂</span>首頁</button>
-  <a class="navbtn navlink" id="xmHistoryNav" href="#transaction-history-modal"><span>☷</span>交易紀錄</a>
-  <a class="navbtn navlink" href="#deposit-modal" data-transaction-entry="deposit"><span>▣</span>存款</a>
-  <a class="navbtn navlink" href="#customer-service-modal"><span>♧</span>客服</a>
-  <a class="navbtn navlink" id="xmProfileNav" href="#profile-modal"><span>♙</span>我的</a>
+<nav class="bottom" id="xmGlobalBottomNav">
+  <a class="navbtn navlink active" id="xmNavHome" data-tab="home" href="#"><span>⌂</span>首頁</a>
+  <a class="navbtn navlink" id="xmHistoryNav" data-tab="history" href="#transaction-history-modal"><span>☷</span>交易紀錄</a>
+  <a class="navbtn navlink" id="xmNavDeposit" data-tab="deposit" href="#deposit-modal" data-transaction-entry="deposit"><span>▣</span>存款</a>
+  <a class="navbtn navlink" id="xmNavService" data-tab="service" href="#customer-service-modal"><span>♧</span>客服</a>
+  <a class="navbtn navlink" id="xmProfileNav" data-tab="profile" href="#profile-modal"><span>♙</span>我的</a>
 </nav>
 
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
@@ -3203,6 +3243,75 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   window.xmRenderRebateHistory=render;
 
   render();
+})();
+</script>
+
+
+<script id="xm-global-bottom-nav-script">
+(function(){
+  "use strict";
+
+  var nav=document.getElementById("xmGlobalBottomNav");
+  if(!nav) return;
+
+  function currentTab(){
+    var h=location.hash || "";
+
+    if(
+      h==="#transaction-history-modal" ||
+      h==="#transaction-pending-modal" ||
+      h==="#payment-wait-modal" ||
+      h==="#withdraw-waiting-modal" ||
+      h==="#withdraw-insufficient-modal"
+    ){
+      return "history";
+    }
+
+    if(
+      h==="#deposit-modal" ||
+      h==="#transfer-demo-modal" ||
+      h==="#proof-upload-modal"
+    ){
+      return "deposit";
+    }
+
+    if(h==="#customer-service-modal"){
+      return "service";
+    }
+
+    if(
+      h==="#profile-modal" ||
+      h==="#rebate-modal" ||
+      h==="#rebate-rate-modal" ||
+      h==="#rebate-history-modal"
+    ){
+      return "profile";
+    }
+
+    return "home";
+  }
+
+  function paint(){
+    var tab=currentTab();
+
+    nav.querySelectorAll("[data-tab]").forEach(function(el){
+      el.classList.toggle("active",el.getAttribute("data-tab")===tab);
+    });
+  }
+
+  nav.addEventListener("click",function(e){
+    var item=e.target.closest && e.target.closest("[data-tab]");
+    if(!item) return;
+
+    nav.querySelectorAll("[data-tab]").forEach(function(el){
+      el.classList.remove("active");
+    });
+    item.classList.add("active");
+  },true);
+
+  window.addEventListener("hashchange",paint);
+  window.addEventListener("load",paint);
+  paint();
 })();
 </script>
 
