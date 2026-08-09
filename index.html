@@ -2359,9 +2359,28 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   }
 
   function render(){
+    var activeSection = document.getElementById("xmActiveTxSection");
+    var activeCard = document.getElementById("xmActiveTxCard");
+    var listEl = document.getElementById("xmHistoryList");
+    var empty = document.getElementById("xmHistoryEmpty");
+
+    if(!activeSection || !activeCard || !listEl || !empty) return;
+
+    /* 登出狀態：交易紀錄必須完全清空，不讀取任何交易鎖或倒數 */
+    if(!localStorage.getItem("xm_demo_session")){
+      activeSection.style.display = "none";
+      activeCard.innerHTML = "";
+      listEl.innerHTML = "";
+      empty.textContent = "無交易紀錄";
+      empty.style.display = "block";
+      return;
+    }
+
+    empty.textContent = "目前沒有交易紀錄";
+
     finalizeIfExpired();
 
-    var activeSection = document.getElementById("xmActiveTxSection");
+
     var activeCard = document.getElementById("xmActiveTxCard");
     var listEl = document.getElementById("xmHistoryList");
     var empty = document.getElementById("xmHistoryEmpty");
@@ -2418,6 +2437,11 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   });
 
   setInterval(function(){
+    if(!localStorage.getItem("xm_demo_session")){
+      if(location.hash === "#transaction-history-modal") render();
+      return;
+    }
+
     finalizeIfExpired();
 
     var current = ensureCurrentFromLock();
