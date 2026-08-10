@@ -2289,322 +2289,257 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 </div>
 
 
+
 <script id="xm-transaction-history-script">
 (function(){
-  "use strict";
+"use strict";
 
-  var HISTORY_PREFIX = "xm_tx_history_v2_";
-  var CURRENT_PREFIX = "xm_tx_current_v2_";
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var HISTORY_PREFIX="xm_tx_history_v2_";
+var CURRENT_PREFIX="xm_tx_current_v2_";
+var timer=null;
 
-  var LOCK_KEYS = [
-    "xm_active_transaction_until",
-    "xm_transaction_lock_until",
-    "xm_payment_wait_deadline_v2",
-    "xm_payment_wait_deadline"
-  ];
+function user(){
+  return localStorage.getItem("xm_demo_session") || "";
+}
 
-  function user(){
-    return localStorage.getItem("xm_demo_session") || "guest";
+function currentKey(){
+  return CURRENT_PREFIX + user();
+}
+
+function historyKey(){
+  return HISTORY_PREFIX + user();
+}
+
+function readJson(key,fallback){
+  try{
+    var raw=localStorage.getItem(key);
+    if(!raw) return fallback;
+    var v=JSON.parse(raw);
+    return v==null ? fallback : v;
+  }catch(e){
+    return fallback;
   }
+}
 
-  function historyKey(){
-    return HISTORY_PREFIX + user();
-  }
+function writeJson(key,value){
+  localStorage.setItem(key,JSON.stringify(value));
+}
 
-  function currentKey(){
-    return CURRENT_PREFIX + user();
-  }
-
-  function readJson(key, fallback){
-    try{
-      var v = JSON.parse(localStorage.getItem(key) || "");
-      return v == null ? fallback : v;
-    }catch(e){
-      return fallback;
-    }
-  }
-
-  function writeJson(key, value){
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-
-  function getLockUntil(){
-    var best = 0;
-
-    LOCK_KEYS.forEach(function(key){
-      var a = Number(localStorage.getItem(key) || 0);
-      var b = Number(sessionStorage.getItem(key) || 0);
-
-      if(a > best) best = a;
-      if(b > best) best = b;
-    });
-
-    return best;
-  }
-
-  function getLockType(){
-    return localStorage.getItem("xm_active_transaction_type") ||
-           localStorage.getItem("xm_transaction_type") ||
-           "deposit";
-  }
-
-  function fmtMoney(n){
-    return Number(n || 0).toLocaleString("en-US",{
-      minimumFractionDigits:2,
-      maximumFractionDigits:2
-    });
-  }
-
-  function fmtDate(ts){
-    var d = new Date(ts);
-    return d.getFullYear()+"/"+
-      String(d.getMonth()+1).padStart(2,"0")+"/"+
-      String(d.getDate()).padStart(2,"0")+" "+
-      String(d.getHours()).padStart(2,"0")+":"+
-      String(d.getMinutes()).padStart(2,"0");
-  }
-
-  function fmtTime(ms){
-    var sec = Math.max(0, Math.ceil(ms / 1000));
-    var h = Math.floor(sec / 3600);
-    var m = Math.floor((sec % 3600) / 60);
-    var s = sec % 60;
-
-    return String(h).padStart(2,"0")+":"+
-           String(m).padStart(2,"0")+":"+
-           String(s).padStart(2,"0");
-  }
-
-  function readCurrent(){
-    return readJson(currentKey(), null);
-  }
-
-  function writeCurrent(tx){
-    if(tx) writeJson(currentKey(), tx);
-    else localStorage.removeItem(currentKey());
-  }
-
-  function readHistory(){
-    var list = readJson(historyKey(), []);
-    return Array.isArray(list) ? list : [];
-  }
-
-  function writeHistory(list){
-    writeJson(historyKey(), list);
-  }
-
-  function detectAmount(type){
-    if(type === "withdraw"){
-      var w = document.getElementById("xmWithdrawAmount");
-      var wn = Number(w && w.value || 0);
-      if(wn > 0) return wn;
-
-      var sw = Number(sessionStorage.getItem("xm_history_withdraw_candidate") || 0);
-      if(sw > 0) return sw;
-    }else{
-      var display = document.getElementById("xmTransferAmount");
-      if(display){
-        var dn = Number(String(display.textContent || "").replace(/,/g,""));
-        if(dn > 0) return dn;
-      }
-
-      var d = document.getElementById("xmDepositAmount");
-      var dn2 = Number(d && d.value || 0);
-      if(dn2 > 0) return dn2;
-
-      var sd = Number(sessionStorage.getItem("xm_history_deposit_candidate") || 0);
-      if(sd > 0) return sd;
-    }
-
-    return 0;
-  }
-
-  function ensureCurrentFromLock(){
-    var until = getLockUntil();
-
-    if(!(until > Date.now())){
-      return null;
-    }
-
-    var current = readCurrent();
-    if(current && current.deadline === until){
-      return current;
-    }
-
-    var type = getLockType();
-    var amount = detectAmount(type);
-
-    current = {
-      id: "tx_" + Date.now(),
-      type: type === "withdraw" ? "withdraw" : "deposit",
-      amount: amount,
-      createdAt: Date.now(),
-      deadline: until,
-      status: "pending"
-    };
-
-    writeCurrent(current);
-    return current;
-  }
-
-  function finalizeIfExpired(){
-    var current = readCurrent();
-    if(!current) return;
-
-    if(Date.now() >= Number(current.deadline || 0)){
-      current.status = "failed";
-      current.appliedAmount = 0;
-      current.finishedAt = Date.now();
-
-      var history = readHistory();
-      history.unshift(current);
-      writeHistory(history);
-      writeCurrent(null);
-    }
-  }
-
-  function activeCardHtml(tx){
-    var label = tx.type === "withdraw" ? "提款" : "存款";
-    var sign = tx.type === "withdraw" ? "−" : "+";
-    var amountText = tx.amount > 0 ? sign + fmtMoney(tx.amount) : "金額處理中";
-
-    return ''+
-      '<div class="xm-tx-card active">'+
-        '<div class="xm-tx-top">'+
-          '<div class="xm-tx-type">'+label+'</div>'+
-          '<div class="xm-tx-amount">'+amountText+'</div>'+
-        '</div>'+
-        '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
-        '<div class="xm-tx-status">處理中</div>'+
-        '<div class="xm-tx-countdown">'+
-          '<small>剩餘處理時間</small>'+
-          '<span id="xmHistoryCountdown">'+fmtTime(tx.deadline-Date.now())+'</span>'+
-        '</div>'+
-      '</div>';
-  }
-
-  function historyCardHtml(tx){
-    var label = tx.type === "withdraw" ? "提款" : "存款";
-    var sign = tx.type === "withdraw" ? "−" : "+";
-    var success = tx.status === "success";
-    var applied = success
-      ? Math.abs(Number(tx.appliedAmount != null ? tx.appliedAmount : tx.amount) || 0)
-      : 0;
-    var amountText = sign + fmtMoney(applied);
-    var status = success ? "交易成功" : "交易失敗";
-
-    return ''+
-      '<div class="xm-tx-card">'+
-        '<div class="xm-tx-top">'+
-          '<div class="xm-tx-type">'+label+'</div>'+
-          '<div class="xm-tx-amount">'+amountText+'</div>'+
-        '</div>'+
-        '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
-        '<div class="xm-tx-status '+(!success?"failed":"")+'">'+status+'</div>'+
-      '</div>';
-  }
-
-  function render(){
-    var activeSection = document.getElementById("xmActiveTxSection");
-    var activeCard = document.getElementById("xmActiveTxCard");
-    var listEl = document.getElementById("xmHistoryList");
-    var empty = document.getElementById("xmHistoryEmpty");
-
-    if(!activeSection || !activeCard || !listEl || !empty) return;
-
-    /* 登出狀態：交易紀錄必須完全清空，不讀取任何交易鎖或倒數 */
-    if(!localStorage.getItem("xm_demo_session")){
-      activeSection.style.display = "none";
-      activeCard.innerHTML = "";
-      listEl.innerHTML = "";
-      empty.textContent = "無交易紀錄";
-      empty.style.display = "block";
-      return;
-    }
-
-    empty.textContent = "目前沒有交易紀錄";
-
-    finalizeIfExpired();
-
-
-    var activeCard = document.getElementById("xmActiveTxCard");
-    var listEl = document.getElementById("xmHistoryList");
-    var empty = document.getElementById("xmHistoryEmpty");
-
-    if(!activeSection || !activeCard || !listEl || !empty) return;
-
-    var current = ensureCurrentFromLock();
-
-    if(current && current.deadline > Date.now()){
-      activeSection.style.display = "block";
-      activeCard.innerHTML = activeCardHtml(current);
-    }else{
-      activeSection.style.display = "none";
-      activeCard.innerHTML = "";
-    }
-
-    var list = readHistory();
-    listEl.innerHTML = list.map(historyCardHtml).join("");
-    empty.style.display = list.length ? "none" : "block";
-  }
-
-  function captureAmounts(){
-    document.addEventListener("click", function(e){
-      var el = e.target;
-
-      while(el && el !== document){
-        if(el.id === "xmPaymentDone"){
-          var d = detectAmount("deposit");
-          if(d > 0){
-            sessionStorage.setItem("xm_history_deposit_candidate", String(d));
-          }
-          break;
-        }
-
-        if(el.id === "xmWithdrawConfirm"){
-          var w = detectAmount("withdraw");
-          if(w > 0){
-            sessionStorage.setItem("xm_history_withdraw_candidate", String(w));
-          }
-          break;
-        }
-
-        el = el.parentNode;
-      }
-    }, true);
-  }
-
-  captureAmounts();
-
-  window.addEventListener("hashchange", function(){
-    if(location.hash === "#transaction-history-modal"){
-      render();
-    }
+function fmtMoney(n){
+  return Number(n||0).toLocaleString("en-US",{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
   });
+}
 
-  setInterval(function(){
-    if(!localStorage.getItem("xm_demo_session")){
-      if(location.hash === "#transaction-history-modal") render();
-      return;
+function fmtDate(ts){
+  var d=new Date(Number(ts||Date.now()));
+  return d.getFullYear()+"/"+
+    String(d.getMonth()+1).padStart(2,"0")+"/"+
+    String(d.getDate()).padStart(2,"0")+" "+
+    String(d.getHours()).padStart(2,"0")+":"+
+    String(d.getMinutes()).padStart(2,"0");
+}
+
+function fmtTime(ms){
+  var sec=Math.max(0,Math.ceil(ms/1000));
+  var h=Math.floor(sec/3600);
+  var m=Math.floor((sec%3600)/60);
+  var s=sec%60;
+  return String(h).padStart(2,"0")+":"+
+         String(m).padStart(2,"0")+":"+
+         String(s).padStart(2,"0");
+}
+
+function getLockUntil(){
+  return Number(
+    localStorage.getItem("xm_active_transaction_until") ||
+    localStorage.getItem("xm_transaction_lock_until") ||
+    localStorage.getItem("xm_payment_wait_deadline_v2") ||
+    localStorage.getItem("xm_payment_wait_deadline") ||
+    0
+  );
+}
+
+function readCurrent(){
+  var u=user();
+  if(!u) return null;
+
+  var c=readJson(CURRENT_PREFIX+u,null);
+  if(!c) return null;
+
+  /*
+    Firebase 送出的 current 原本可能沒有 deadline。
+    直接使用玩家送出時建立的 1 小時 lock 當截止時間。
+  */
+  if(!(Number(c.deadline)>0)){
+    var lock=getLockUntil();
+    if(lock>0){
+      c.deadline=lock;
+      writeJson(CURRENT_PREFIX+u,c);
+    }else{
+      c.deadline=Number(c.createdAt||Date.now())+60*60*1000;
+      localStorage.setItem("xm_active_transaction_until",String(c.deadline));
+      localStorage.setItem("xm_active_transaction_type",c.type||"deposit");
+      writeJson(CURRENT_PREFIX+u,c);
     }
+  }
 
-    finalizeIfExpired();
+  return c;
+}
 
-    var current = ensureCurrentFromLock();
-    var countdown = document.getElementById("xmHistoryCountdown");
+function readHistory(){
+  var list=readJson(historyKey(),[]);
+  return Array.isArray(list) ? list : [];
+}
 
-    if(current && countdown){
-      countdown.textContent = fmtTime(current.deadline - Date.now());
+function activeCardHtml(tx){
+  var label=tx.type==="withdraw" ? "提款" : "存款";
+  var sign=tx.type==="withdraw" ? "−" : "+";
+
+  return ''+
+    '<div class="xm-tx-card active">'+
+      '<div class="xm-tx-top">'+
+        '<div class="xm-tx-type">'+label+'</div>'+
+        '<div class="xm-tx-amount">'+sign+fmtMoney(tx.amount)+'</div>'+
+      '</div>'+
+      '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
+      '<div class="xm-tx-status">等待後台審核</div>'+
+      '<div class="xm-tx-countdown">'+
+        '<small>剩餘處理時間</small>'+
+        '<span id="xmHistoryCountdown">'+fmtTime(Number(tx.deadline)-Date.now())+'</span>'+
+      '</div>'+
+    '</div>';
+}
+
+function historyCardHtml(tx){
+  var label=tx.type==="withdraw" ? "提款" : "存款";
+  var sign=tx.type==="withdraw" ? "−" : "+";
+  var success=tx.status==="success";
+
+  var applied=success
+    ? Math.abs(Number(tx.appliedAmount!=null ? tx.appliedAmount : tx.amount)||0)
+    : 0;
+
+  return ''+
+    '<div class="xm-tx-card">'+
+      '<div class="xm-tx-top">'+
+        '<div class="xm-tx-type">'+label+'</div>'+
+        '<div class="xm-tx-amount">'+sign+fmtMoney(applied)+'</div>'+
+      '</div>'+
+      '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
+      '<div class="xm-tx-status '+(!success?"failed":"")+'">'+
+        (success ? "交易成功" : "交易失敗")+
+      '</div>'+
+    '</div>';
+}
+
+function render(){
+  var activeSection=document.getElementById("xmActiveTxSection");
+  var activeCard=document.getElementById("xmActiveTxCard");
+  var listEl=document.getElementById("xmHistoryList");
+  var empty=document.getElementById("xmHistoryEmpty");
+
+  if(!activeSection||!activeCard||!listEl||!empty) return;
+
+  if(!user()){
+    activeSection.style.display="none";
+    activeCard.innerHTML="";
+    listEl.innerHTML="";
+    empty.textContent="無交易紀錄";
+    empty.style.display="block";
+    return;
+  }
+
+  var current=readCurrent();
+
+  /*
+    只有 pending/current 還存在才顯示倒數。
+    後台接受或拒絕後，Firebase 同步程式會清掉 current，
+    下一次 render 就會把倒數整塊拿掉。
+  */
+  if(current){
+    var remaining=Number(current.deadline||0)-Date.now();
+
+    if(remaining>0){
+      activeSection.style.display="block";
+      activeCard.innerHTML=activeCardHtml(current);
+    }else{
+      activeSection.style.display="none";
+      activeCard.innerHTML="";
     }
+  }else{
+    activeSection.style.display="none";
+    activeCard.innerHTML="";
+  }
 
-    if(location.hash === "#transaction-history-modal"){
-      render();
-    }
-  }, 1000);
+  var list=readHistory();
+  listEl.innerHTML=list.map(historyCardHtml).join("");
+  empty.textContent="目前沒有交易紀錄";
+  empty.style.display=list.length ? "none" : "block";
+}
 
+function tick(){
+  var current=readCurrent();
+
+  if(!current){
+    var section=document.getElementById("xmActiveTxSection");
+    if(section) section.style.display="none";
+    return;
+  }
+
+  var left=Number(current.deadline||0)-Date.now();
+  var el=document.getElementById("xmHistoryCountdown");
+
+  if(left>0){
+    if(el) el.textContent=fmtTime(left);
+  }else{
+    if(el) el.textContent="00:00:00";
+  }
+}
+
+/*
+  交易紀錄頁自己每秒更新倒數，
+  不依賴等待頁的 timer，所以不會再卡 00:00:00。
+*/
+if(timer) clearInterval(timer);
+timer=setInterval(function(){
   render();
+  tick();
+},1000);
+
+window.addEventListener("hashchange",function(){
+  render();
+  tick();
+});
+
+window.addEventListener("focus",function(){
+  render();
+  tick();
+});
+
+window.addEventListener("pageshow",function(){
+  render();
+  tick();
+});
+
+document.addEventListener("visibilitychange",function(){
+  if(!document.hidden){
+    render();
+    tick();
+  }
+});
+
+setTimeout(function(){
+  render();
+  tick();
+},100);
+
+window.xmRenderTransactionHistory=render;
 })();
 </script>
+
 
 
 
@@ -3844,10 +3779,11 @@ async function submitRemote(type,amount){
   await ensurePlayer();
   if(await pendingExists(u)){location.hash="transaction-pending-modal";return false}
   const id="tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);
-  const tx={id,user:u,type,amount,createdAt:Date.now(),status:"pending"};
+  const deadline=Date.now()+60*60*1000;
+  const tx={id,user:u,type,amount,createdAt:Date.now(),deadline:deadline,status:"pending"};
   await put("/requests/"+id,tx);
   localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
-  localStorage.setItem("xm_active_transaction_until",String(Date.now()+3600000));
+  localStorage.setItem("xm_active_transaction_until",String(tx.deadline));
   localStorage.setItem("xm_active_transaction_type",type);
   location.hash=type==="deposit"?"payment-wait-modal":"withdraw-wait-modal";
   return false;
@@ -4068,6 +4004,9 @@ async function checkTransaction(){
 
     /* 觸發交易紀錄頁重新渲染 */
     window.dispatchEvent(new Event("hashchange"));
+    if(typeof window.xmRenderTransactionHistory==="function"){
+      try{ window.xmRenderTransactionHistory(); }catch(e){}
+    }
 
   }catch(e){
     console.error("交易狀態同步失敗",e);
