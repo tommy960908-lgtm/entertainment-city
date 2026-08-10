@@ -2487,7 +2487,9 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     var label = tx.type === "withdraw" ? "提款" : "存款";
     var sign = tx.type === "withdraw" ? "−" : "+";
     var success = tx.status === "success";
-    var applied = success ? Math.abs(Number(tx.appliedAmount!=null?tx.appliedAmount:tx.amount)||0) : 0;
+    var applied = success
+      ? Math.abs(Number(tx.appliedAmount != null ? tx.appliedAmount : tx.amount) || 0)
+      : 0;
     var amountText = sign + fmtMoney(applied);
     var status = success ? "交易成功" : "交易失敗";
 
@@ -3887,18 +3889,58 @@ setTimeout(()=>ensurePlayer().then(syncPlayer).catch(console.error),300);
 
 
 
+
 <script id="xm-firebase-transaction-finish-sync">
 (function(){
 "use strict";
 
 var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
-var lastFinishedId="";
+var handledIds={};
 
 function currentUser(){
   return localStorage.getItem("xm_demo_session") || "";
 }
 
-function clearEverything(){
+function readJson(key,fallback){
+  try{
+    var raw=localStorage.getItem(key);
+    if(!raw) return fallback;
+    var v=JSON.parse(raw);
+    return v==null ? fallback : v;
+  }catch(e){
+    return fallback;
+  }
+}
+
+function writeHistory(remote){
+  var u=currentUser();
+  if(!u || !remote || !remote.id) return;
+
+  var key="xm_tx_history_v2_"+u;
+  var list=readJson(key,[]);
+  if(!Array.isArray(list)) list=[];
+
+  /* 避免同一筆被輪詢重複加入 */
+  list=list.filter(function(x){
+    return !x || x.id!==remote.id;
+  });
+
+  list.unshift({
+    id:remote.id,
+    type:remote.type,
+    amount:Number(remote.amount||0),
+    appliedAmount:remote.status==="success"
+      ? Number(remote.appliedAmount != null ? remote.appliedAmount : remote.amount || 0)
+      : 0,
+    createdAt:Number(remote.createdAt||Date.now()),
+    finishedAt:Number(remote.finishedAt||Date.now()),
+    status:remote.status
+  });
+
+  localStorage.setItem(key,JSON.stringify(list));
+}
+
+function clearTransactionLock(){
   var u=currentUser();
 
   [
@@ -3917,95 +3959,133 @@ function clearEverything(){
     localStorage.removeItem("xm_tx_current_v2_"+u);
   }
 
+  /* 真正停止原本正在跑的倒數 timer */
   try{
     if(typeof window.xmFinishTransactionUI==="function"){
       window.xmFinishTransactionUI();
+    }else if(typeof window.xmAdminReleaseTransaction==="function"){
+      window.xmAdminReleaseTransaction();
     }
   }catch(e){}
+}
+
+function showFinishedState(remote){
+  var success=remote.status==="success";
 
   var box=document.getElementById("xmPaymentCountdown");
   if(box) box.textContent="00:00:00";
+
+  var title=document.getElementById("xmWaitTitle");
+  if(title) title.textContent=success ? "交易成功" : "交易失敗";
+
+  var status=document.getElementById("xmWaitStatus");
+  if(status){
+    var sign=remote.type==="withdraw" ? "−" : "+";
+    var amount=success
+      ? Math.abs(Number(remote.appliedAmount != null ? remote.appliedAmount : remote.amount)||0)
+      : 0;
+    status.textContent=(success ? "交易已完成 " : "交易未完成 ") +
+      sign + amount.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  var icon=document.getElementById("xmWaitIcon");
+  if(icon) icon.textContent=success ? "✓" : "✕";
 }
 
 async function fetchJson(path){
-  var r=await fetch(DB+path+".json?ts="+Date.now(),{
-    cache:"no-store"
-  });
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
   if(!r.ok) throw new Error("Firebase "+r.status);
   return await r.json();
 }
 
-async function findCurrentRemote(){
+async function currentRemote(){
   var u=currentUser();
   if(!u) return null;
 
-  /* First use local current transaction id */
-  try{
-    var raw=localStorage.getItem("xm_tx_current_v2_"+u);
-    if(raw){
-      var c=JSON.parse(raw);
-      if(c && c.id){
-        var exact=await fetchJson("/requests/"+c.id);
-        if(exact) return exact;
-      }
-    }
-  }catch(e){}
+  var current=readJson("xm_tx_current_v2_"+u,null);
 
-  /*
-    Fallback: find the newest request belonging to this player.
-    This fixes cases where another legacy script cleared/replaced local current.
-  */
+  /* 正常情況直接查玩家目前這筆交易 */
+  if(current && current.id){
+    var exact=await fetchJson("/requests/"+encodeURIComponent(current.id));
+    if(exact) return exact;
+  }
+
+  /* 保底：找這個玩家最新一筆仍待處理的交易 */
   var all=await fetchJson("/requests");
   if(!all) return null;
 
   var arr=Object.values(all)
-    .filter(function(r){return r && r.user===u})
-    .sort(function(a,b){return Number(b.createdAt||0)-Number(a.createdAt||0)});
+    .filter(function(r){
+      return r && r.user===u;
+    })
+    .sort(function(a,b){
+      return Number(b.createdAt||0)-Number(a.createdAt||0);
+    });
 
   return arr.length ? arr[0] : null;
 }
 
-async function checkRemoteFinished(){
+async function checkTransaction(){
   var u=currentUser();
   if(!u) return;
 
   try{
-    var remote=await findCurrentRemote();
-    if(!remote) return;
+    var remote=await currentRemote();
+    if(!remote || !remote.id) return;
 
-    if(remote.status==="success" || remote.status==="failed"){
-      if(lastFinishedId!==remote.id){
-        lastFinishedId=remote.id;
-      }
-
-      clearEverything();
-
-      /*
-        Remove waiting modal immediately.
-        User can start the next transaction without waiting for navigation.
-      */
-      if(location.hash==="#payment-wait-modal" ||
-         location.hash==="#withdraw-waiting-modal" ||
-         location.hash==="#transaction-pending-modal"){
-        history.replaceState(null,"",location.pathname+location.search);
-        window.dispatchEvent(new Event("hashchange"));
-      }
+    /*
+      pending 時完全不碰倒數。
+      玩家送出後，原本的 1 小時倒數照常運作。
+    */
+    if(remote.status==="pending"){
+      return;
     }
+
+    if(remote.status!=="success" && remote.status!=="failed"){
+      return;
+    }
+
+    if(handledIds[remote.id]){
+      return;
+    }
+    handledIds[remote.id]=true;
+
+    /*
+      只有後台已接受 / 拒絕後才執行：
+      1. 寫入交易紀錄
+      2. 停止倒數
+      3. 清除交易鎖
+      4. 玩家可以立刻再做下一筆
+    */
+    writeHistory(remote);
+    clearTransactionLock();
+    showFinishedState(remote);
+
+    /* 讓玩家端其他同步程式重新讀 Firebase 餘額 */
+    if(typeof window.xmSyncPlayerBalance==="function"){
+      try{window.xmSyncPlayerBalance()}catch(e){}
+    }
+
+    /* 觸發交易紀錄頁重新渲染 */
+    window.dispatchEvent(new Event("hashchange"));
+
   }catch(e){
-    console.error("transaction sync error",e);
+    console.error("交易狀態同步失敗",e);
   }
 }
 
-window.addEventListener("focus",checkRemoteFinished);
-window.addEventListener("pageshow",checkRemoteFinished);
-window.addEventListener("hashchange",checkRemoteFinished);
+window.addEventListener("focus",checkTransaction);
+window.addEventListener("pageshow",checkTransaction);
+window.addEventListener("hashchange",checkTransaction);
 
-setInterval(checkRemoteFinished,500);
-setTimeout(checkRemoteFinished,200);
+/* 後台處理後約 0.5 秒內玩家端就會結束倒數 */
+setInterval(checkTransaction,500);
+setTimeout(checkTransaction,250);
 
-window.xmCheckRemoteTransactionFinished=checkRemoteFinished;
+window.xmCheckRemoteTransactionFinished=checkTransaction;
 })();
 </script>
+
 
 
 </body>
