@@ -217,8 +217,8 @@ body:has(#TABLE:target) .categories .cat[href="#TABLE"]{
   pointer-events:none;
 }
 /* 快速金額選中後，純 CSS 直接把相同數字顯示在金額欄 */
-.deposit-quick:has(#dep100:checked) + .auth-field2 .quick-value-display{display:flex}
-.deposit-quick:has(#dep100:checked) + .auth-field2 .quick-value-display::after{content:"100"}
+
+
 .deposit-quick:has(#dep500:checked) + .auth-field2 .quick-value-display{display:flex}
 .deposit-quick:has(#dep500:checked) + .auth-field2 .quick-value-display::after{content:"500"}
 .deposit-quick:has(#dep1000:checked) + .auth-field2 .quick-value-display{display:flex}
@@ -226,8 +226,8 @@ body:has(#TABLE:target) .categories .cat[href="#TABLE"]{
 .deposit-quick:has(#dep5000:checked) + .auth-field2 .quick-value-display{display:flex}
 .deposit-quick:has(#dep5000:checked) + .auth-field2 .quick-value-display::after{content:"5000"}
 
-.withdraw-quick:has(#wd100:checked) + .auth-field2 .quick-value-display{display:flex}
-.withdraw-quick:has(#wd100:checked) + .auth-field2 .quick-value-display::after{content:"100"}
+
+
 .withdraw-quick:has(#wd500:checked) + .auth-field2 .quick-value-display{display:flex}
 .withdraw-quick:has(#wd500:checked) + .auth-field2 .quick-value-display::after{content:"500"}
 .withdraw-quick:has(#wd1000:checked) + .auth-field2 .quick-value-display{display:flex}
@@ -246,7 +246,7 @@ body:has(#TABLE:target) .categories .cat[href="#TABLE"]{
 
 /* 快速儲值金額：完全不靠 JavaScript，同頁 hash 切換仍保留 radio 選中狀態 */
 #xmTransferAmount::after{content:"請先選擇金額";}
-body:has(#dep100:checked) #xmTransferAmount::after{content:"100.00";}
+
 body:has(#dep500:checked) #xmTransferAmount::after{content:"500.00";}
 body:has(#dep1000:checked) #xmTransferAmount::after{content:"1,000.00";}
 body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
@@ -1402,6 +1402,206 @@ html{
   box-shadow:none!important;
 }
 
+
+/* 紅包頁 */
+.xm-redpacket-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-redpacket-shell{
+  width:min(100%,1050px);
+  height:100%;
+  min-height:100vh;
+  background:radial-gradient(circle at 50% -15%,#39100c 0,#100706 34%,#050505 76%);
+  display:flex;
+  flex-direction:column;
+}
+.xm-redpacket-header{
+  height:64px;
+  flex:0 0 64px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #4a211e;
+  background:rgba(8,4,4,.96);
+  padding-top:env(safe-area-inset-top);
+}
+.xm-redpacket-header h2{
+  margin:0;
+  text-align:center;
+  font-size:20px;
+  color:#f3cb68;
+}
+.xm-redpacket-back{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  color:#f0ca67;
+  font-size:34px;
+  text-decoration:none;
+}
+.xm-redpacket-scroll{
+  flex:1;
+  overflow-y:auto;
+  padding:28px 16px 110px;
+}
+.xm-redpacket-card{
+  max-width:520px;
+  margin:0 auto;
+  padding:28px 20px;
+  border-radius:18px;
+  border:1px solid #7d3029;
+  background:linear-gradient(180deg,#28100d,#100807);
+  text-align:center;
+  box-shadow:0 16px 50px rgba(0,0,0,.35);
+}
+.xm-redpacket-icon{font-size:62px;line-height:1;margin-bottom:14px}
+.xm-redpacket-label{color:#d5b58e;font-size:14px;margin-bottom:7px}
+.xm-redpacket-amount{
+  font-size:38px;
+  font-weight:950;
+  color:#f5d06a;
+  margin-bottom:20px;
+}
+.xm-redpacket-claim{
+  width:100%;
+  height:48px;
+  border:0;
+  border-radius:11px;
+  background:linear-gradient(180deg,#e84e42,#a91e18);
+  color:#fff;
+  font-size:16px;
+  font-weight:900;
+}
+.xm-redpacket-claim:disabled{opacity:.4}
+.xm-redpacket-note{
+  color:#ab9487;
+  font-size:12px;
+  margin:14px 0 0;
+}
+
+
+.xm-redpacket-claim:disabled{
+  background:#4a4a4a!important;
+  color:#8d8d8d!important;
+  opacity:1!important;
+  cursor:not-allowed!important;
+}
+.xm-redpacket-history-link{
+  display:block;
+  margin-top:16px;
+  text-align:center;
+  color:#e7c165;
+  text-decoration:none;
+  font-size:14px;
+}
+.xm-redpacket-tips{
+  max-width:520px;
+  margin:18px auto 0;
+  padding:18px;
+  border:1px solid #34221f;
+  border-radius:14px;
+  background:#0d0908;
+}
+.xm-redpacket-tips h3{
+  margin:0 0 10px;
+  color:#e9c76b;
+  font-size:16px;
+}
+.xm-redpacket-line{
+  height:1px;
+  background:#34221f;
+  margin-bottom:10px;
+}
+.xm-redpacket-tips p{
+  margin:0;
+  color:#b49e91;
+  font-size:13px;
+  line-height:1.7;
+}
+
+.xm-redpacket-history-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-redpacket-history-shell{
+  width:min(100%,1050px);
+  min-height:100vh;
+  background:radial-gradient(circle at 50% -15%,#39100c 0,#100706 34%,#050505 76%);
+}
+.xm-redpacket-history-header{
+  height:64px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #4a211e;
+  background:rgba(8,4,4,.96);
+}
+.xm-redpacket-history-header h2{
+  margin:0;
+  text-align:center;
+  font-size:20px;
+  color:#f3cb68;
+}
+.xm-redpacket-history-back{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  color:#f0ca67;
+  font-size:34px;
+  text-decoration:none;
+}
+.xm-redpacket-history-scroll{
+  padding:18px 16px 110px;
+}
+.xm-redpacket-history-card{
+  max-width:600px;
+  margin:0 auto 10px;
+  padding:14px 16px;
+  border:1px solid #30231e;
+  border-radius:12px;
+  background:#0e0b09;
+}
+.xm-redpacket-history-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+.xm-redpacket-history-title{
+  font-weight:800;
+  color:#eee5d7;
+}
+.xm-redpacket-history-amount{
+  color:#efcb69;
+  font-weight:900;
+}
+.xm-redpacket-history-meta{
+  margin-top:7px;
+  color:#80786f;
+  font-size:12px;
+}
+.xm-redpacket-history-status{
+  margin-top:7px;
+  color:#75cf8a;
+  font-size:13px;
+  font-weight:800;
+}
+.xm-redpacket-history-status.expired{
+  color:#e45e5e;
+}
+.xm-redpacket-history-empty{
+  text-align:center;
+  padding:38px 0;
+  color:#777;
+}
+
 </style>
 </head>
 <body>
@@ -1622,7 +1822,7 @@ function openGame(name){openSheet(name,'目前為首頁 Demo。之後可以把�
     <form id="xmDepositForm">
       <div class="amount-grid quick-radio-grid deposit-quick">
 
-        <input type="radio" name="depositQuick" id="dep100" value="100"><label for="dep100">100</label>
+        
         <input type="radio" name="depositQuick" id="dep500" value="500"><label for="dep500">500</label>
         <input type="radio" name="depositQuick" id="dep1000" value="1000"><label for="dep1000">1,000</label>
         <input type="radio" name="depositQuick" id="dep5000" value="5000"><label for="dep5000">5,000</label>
@@ -1631,7 +1831,7 @@ function openGame(name){openSheet(name,'目前為首頁 Demo。之後可以把�
       <div class="auth-field2">
         <label>存款金額</label>
         <div class="amount-field-wrap deposit-field-wrap">
-          <input id="xmDepositAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="輸入金額">
+          <input id="xmDepositAmount" type="number" min="500" step="1" inputmode="numeric" placeholder="輸入金額">
           <div class="quick-value-display" aria-hidden="true"></div>
         </div>
       </div>
@@ -1660,15 +1860,14 @@ function openGame(name){openSheet(name,'目前為首頁 Demo。之後可以把�
         <label>提款金額</label>
         <input id="xmWithdrawAmount"
                type="number"
-               min="1"
+               min="500"
                step="1"
                inputmode="numeric"
                placeholder="輸入金額">
       </div>
 
       <div class="amount-grid quick-radio-grid">
-        <input type="radio" name="withdrawQuick" id="wd100" value="100">
-        <label for="wd100">100</label>
+        
 
         <input type="radio" name="withdrawQuick" id="wd500" value="500">
         <label for="wd500">500</label>
@@ -2723,6 +2922,9 @@ window.xmRenderTransactionHistory=render;
             <a href="#rebate-modal" class="xm-wallet-action">
               <span>↺</span><b>返水</b>
             </a>
+            <a href="#redpacket-modal" class="xm-wallet-action">
+              <span>🧧</span><b>紅包</b>
+            </a>
           </div>
         </div>
       </section>
@@ -2745,6 +2947,55 @@ window.xmRenderTransactionHistory=render;
   </div>
 </div>
 
+
+
+
+<div class="auth-target xm-redpacket-page" id="redpacket-modal">
+  <div class="xm-redpacket-shell">
+    <div class="xm-redpacket-header">
+      <a href="#profile-modal" class="xm-redpacket-back">‹</a>
+      <h2>紅包</h2>
+      <div></div>
+    </div>
+
+    <div class="xm-redpacket-scroll">
+      <section class="xm-redpacket-card">
+        <div class="xm-redpacket-icon">🧧</div>
+        <div class="xm-redpacket-label">可領取紅包</div>
+        <div class="xm-redpacket-amount" id="xmRedPacketAmount">0.00</div>
+
+        <button id="xmRedPacketClaimBtn" type="button" class="xm-redpacket-claim" disabled>
+          立即領取
+        </button>
+
+        <a class="xm-redpacket-history-link" href="#redpacket-history-modal">
+          查看紅包明細 ›
+        </a>
+      </section>
+
+      <section class="xm-redpacket-tips">
+        <h3>說明</h3>
+        <div class="xm-redpacket-line"></div>
+        <p>紅包提領期限為24小時 過期不在補發</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="auth-target xm-redpacket-history-page" id="redpacket-history-modal">
+  <div class="xm-redpacket-history-shell">
+    <div class="xm-redpacket-history-header">
+      <a href="#redpacket-modal" class="xm-redpacket-history-back">‹</a>
+      <h2>紅包明細</h2>
+      <div></div>
+    </div>
+
+    <div class="xm-redpacket-history-scroll">
+      <div id="xmRedPacketHistoryList"></div>
+      <div id="xmRedPacketHistoryEmpty" class="xm-redpacket-history-empty">目前沒有紅包紀錄</div>
+    </div>
+  </div>
+</div>
 
 <div class="auth-target xm-rebate-page" id="rebate-modal">
   <div class="xm-rebate-shell">
@@ -3791,6 +4042,17 @@ async function submitRemote(type,amount){
   const u=user(); if(!u){location.hash="login-required-modal";return false}
   amount=Number(amount||0);
   if(!(amount>0)) return false;
+
+  if(type==="deposit" && amount<500){
+    var ds=document.getElementById("xmDepositStatus");
+    if(ds){
+      ds.textContent="最低存款金額為500";
+      ds.style.display="block";
+    }else{
+      alert("最低存款金額為500");
+    }
+    return false;
+  }
   await ensurePlayer();
   if(await pendingExists(u,type)){location.hash="transaction-pending-modal";return false}
   const id="tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);
@@ -4700,6 +4962,301 @@ setInterval(syncUI,1500);
 setTimeout(syncUI,300);
 })();
 </script>
+
+
+<script id="xm-withdrawable-balance-ui-v2">
+(function(){
+"use strict";
+
+async function refreshWithdrawable(){
+  if(typeof window.xmGetWithdrawableBalance!=="function") return;
+
+  try{
+    var available=await window.xmGetWithdrawableBalance();
+    var el=document.getElementById("xmWithdrawBalance");
+
+    if(el){
+      el.textContent=Number(available||0).toLocaleString("en-US",{
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      });
+    }
+  }catch(e){}
+}
+
+window.addEventListener("hashchange",function(){
+  if(location.hash==="#withdraw-modal"){
+    refreshWithdrawable();
+  }
+});
+window.addEventListener("focus",refreshWithdrawable);
+window.addEventListener("pageshow",refreshWithdrawable);
+
+/* 防止其他舊餘額同步程式把提款頁又改回總餘額 */
+setInterval(function(){
+  if(location.hash==="#withdraw-modal"){
+    refreshWithdrawable();
+  }
+},600);
+
+setTimeout(refreshWithdrawable,200);
+window.xmRefreshWithdrawableBalance=refreshWithdrawable;
+})();
+</script>
+
+
+
+<script id="xm-redpacket-firebase-v1">
+(function(){
+"use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var EXPIRE_MS=24*60*60*1000;
+
+function user(){ return localStorage.getItem("xm_demo_session")||""; }
+function safeKey(s){ return encodeURIComponent(String(s)).replace(/\./g,"%2E"); }
+function money(v){ return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function dt(ts){
+  var d=new Date(Number(ts||Date.now()));
+  return d.getFullYear()+"/"+
+    String(d.getMonth()+1).padStart(2,"0")+"/"+
+    String(d.getDate()).padStart(2,"0")+" "+
+    String(d.getHours()).padStart(2,"0")+":"+
+    String(d.getMinutes()).padStart(2,"0");
+}
+
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function put(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+
+async function addHistory(k,type,amount,issuedAt){
+  if(!(Number(amount)>0)) return;
+
+  var id="rp_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);
+  await put("/redPacketHistory/"+k+"/"+id,{
+    id:id,
+    type:type,
+    amount:Number(amount),
+    issuedAt:Number(issuedAt)||Date.now(),
+    finishedAt:Date.now()
+  });
+}
+
+async function currentPacket(){
+  var u=user();
+  if(!u) return {amount:0,issuedAt:0};
+
+  var k=safeKey(u);
+  var rp=await get("/redPackets/"+k);
+
+  if(!rp) return {amount:0,issuedAt:0};
+
+  var amount=Math.max(0,Number(rp.amount||0));
+  var issuedAt=Number(rp.issuedAt||0);
+
+  if(amount>0 && issuedAt>0 && Date.now()-issuedAt>=EXPIRE_MS){
+    await addHistory(k,"expired",amount,issuedAt);
+    await put("/redPackets/"+k,{amount:0,issuedAt:0,expiredAt:Date.now()});
+    return {amount:0,issuedAt:0};
+  }
+
+  return {
+    amount:amount,
+    issuedAt:issuedAt
+  };
+}
+
+async function render(){
+  var amountEl=document.getElementById("xmRedPacketAmount");
+  var btn=document.getElementById("xmRedPacketClaimBtn");
+  if(!amountEl||!btn)return;
+
+  var u=user();
+  if(!u){
+    amountEl.textContent="0.00";
+    btn.disabled=true;
+    return;
+  }
+
+  try{
+    var rp=await currentPacket();
+    amountEl.textContent=money(rp.amount);
+    btn.disabled=!(rp.amount>0);
+  }catch(e){
+    amountEl.textContent="0.00";
+    btn.disabled=true;
+  }
+}
+
+async function renderHistory(){
+  var list=document.getElementById("xmRedPacketHistoryList");
+  var empty=document.getElementById("xmRedPacketHistoryEmpty");
+  if(!list||!empty)return;
+
+  var u=user();
+  if(!u){
+    list.innerHTML="";
+    empty.style.display="block";
+    return;
+  }
+
+  try{
+    var k=safeKey(u);
+    var data=await get("/redPacketHistory/"+k);
+    var arr=data ? Object.values(data) : [];
+
+    arr.sort(function(a,b){
+      return Number(b.finishedAt||0)-Number(a.finishedAt||0);
+    });
+
+    list.innerHTML=arr.map(function(item){
+      var expired=item.type==="expired";
+      return ''+
+        '<div class="xm-redpacket-history-card">'+
+          '<div class="xm-redpacket-history-top">'+
+            '<div class="xm-redpacket-history-title">'+(expired?"過期紅包":"領取紅包")+'</div>'+
+            '<div class="xm-redpacket-history-amount">'+money(item.amount)+'</div>'+
+          '</div>'+
+          '<div class="xm-redpacket-history-meta">時間：'+dt(item.finishedAt)+'</div>'+
+          '<div class="xm-redpacket-history-status '+(expired?"expired":"")+'">'+
+            (expired?"已過期 ":"已領取 ")+money(item.amount)+
+          '</div>'+
+        '</div>';
+    }).join("");
+
+    empty.style.display=arr.length?"none":"block";
+  }catch(e){
+    list.innerHTML="";
+    empty.style.display="block";
+  }
+}
+
+async function claim(){
+  var u=user();
+  if(!u){
+    location.hash="login-required-modal";
+    return;
+  }
+
+  var k=safeKey(u);
+  var rp=await currentPacket();
+  var amount=Math.max(0,Number(rp.amount||0));
+
+  if(!(amount>0)){
+    await render();
+    return;
+  }
+
+  var player=await get("/players/"+k) || {id:u,balance:0,createdAt:Date.now()};
+  player.balance=Math.round((Number(player.balance||0)+amount)*100)/100;
+
+  /*
+    紅包直接進可提款餘額。
+    不寫 rebateState，因此不需要流水。
+  */
+  await put("/players/"+k,player);
+  await addHistory(k,"claimed",amount,rp.issuedAt);
+  await put("/redPackets/"+k,{amount:0,issuedAt:0,claimedAt:Date.now()});
+
+  try{
+    var users=JSON.parse(localStorage.getItem("xm_demo_users")||"{}");
+    if(users[u]){
+      users[u].balance=player.balance;
+      localStorage.setItem("xm_demo_users",JSON.stringify(users));
+    }
+  }catch(e){}
+
+  if(typeof window.xmSyncPlayerBalance==="function"){
+    try{window.xmSyncPlayerBalance()}catch(e){}
+  }
+  if(typeof window.xmRefreshWithdrawableBalance==="function"){
+    try{window.xmRefreshWithdrawableBalance()}catch(e){}
+  }
+
+  await render();
+  await renderHistory();
+}
+
+function bind(){
+  var btn=document.getElementById("xmRedPacketClaimBtn");
+  if(btn && btn.dataset.bound!=="1"){
+    btn.dataset.bound="1";
+    btn.onclick=function(){
+      if(btn.disabled) return;
+      btn.disabled=true;
+
+      claim().catch(function(e){
+        console.error(e);
+        alert("紅包領取失敗，請重新再試");
+      }).finally(function(){
+        render();
+      });
+    };
+  }
+}
+
+window.addEventListener("hashchange",function(){
+  if(location.hash==="#redpacket-modal"){
+    if(!user()){
+      location.hash="login-required-modal";
+      return;
+    }
+    bind();
+    render();
+  }
+
+  if(location.hash==="#redpacket-history-modal"){
+    if(!user()){
+      location.hash="login-required-modal";
+      return;
+    }
+    renderHistory();
+  }
+});
+
+window.addEventListener("focus",function(){
+  render();
+  if(location.hash==="#redpacket-history-modal") renderHistory();
+});
+window.addEventListener("pageshow",function(){
+  render();
+  if(location.hash==="#redpacket-history-modal") renderHistory();
+});
+
+/* 每分鐘檢查一次是否滿 24 小時過期 */
+setInterval(function(){
+  if(user()){
+    render();
+    if(location.hash==="#redpacket-history-modal") renderHistory();
+  }
+},60000);
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",function(){
+    bind();
+    render();
+  });
+}else{
+  bind();
+  render();
+}
+
+window.xmRenderRedPacket=render;
+window.xmRenderRedPacketHistory=renderHistory;
+})();
+</script>
+
 
 </body>
 </html>

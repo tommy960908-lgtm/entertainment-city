@@ -136,6 +136,7 @@ body.xm-admin-authenticated{overflow:auto!important;height:auto!important}
       <button type="button" class="tab active" data-tab="players">玩家管理</button>
       <button type="button" class="tab" data-tab="transactions">交易管理</button>
       <button type="button" class="tab" data-tab="rebates">返水管理</button>
+      <button type="button" class="tab" data-tab="redpackets">紅包管理</button>
     </div>
 
     <section id="playersView" class="panel">
@@ -152,6 +153,17 @@ body.xm-admin-authenticated{overflow:auto!important;height:auto!important}
       <div class="panel-head"><h2>返水管理</h2></div>
       <div class="table-wrap"><table><thead><tr><th>玩家</th><th>餘額</th><th>可領返水</th><th>發放時間</th><th>操作</th></tr></thead><tbody id="rebateBody"></tbody></table></div>
     </section>
+
+    <section id="redpacketsView" class="panel hidden">
+      <div class="panel-head"><h2>紅包管理</h2></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px">
+        <input id="redPacketPlayerId" placeholder="玩家ID" style="padding:11px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
+        <input id="redPacketAmountInput" type="number" min="0" step="0.01" placeholder="紅包金額" style="padding:11px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
+        <button class="primary" type="button" id="redPacketIssueBtn">確認發放</button>
+      </div>
+      <div style="color:#8f887c;font-size:12px">玩家領取後直接加入可提款餘額，不需要流水。</div>
+    </section>
+
   </main>
 </section>
 
@@ -223,7 +235,7 @@ function finishTx(u,status){
   localStorage.removeItem(currentKey(u));clearLocks();render();
 }
 function showTab(name,btn){
-  ["players","transactions","rebates"].forEach(function(v){byId(v+"View").classList.toggle("hidden",v!==name)});
+  ["players","transactions","rebates","redpackets"].forEach(function(v){byId(v+"View").classList.toggle("hidden",v!==name)});
   Array.from(document.querySelectorAll(".tab")).forEach(function(x){x.classList.remove("active")});
   if(btn)btn.classList.add("active");
 }
@@ -873,6 +885,89 @@ function bind(){
     }catch(e){
       console.error(e);
       alert("返水發放失敗，請重新再試");
+    }
+
+    return false;
+  };
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bind);
+}else{
+  bind();
+}
+setTimeout(bind,300);
+})();
+</script>
+
+
+<script id="xm-firebase-redpacket-admin-v1">
+(function(){
+"use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function safeKey(s){ return encodeURIComponent(String(s)).replace(/\./g,"%2E"); }
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function put(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+function money(v){
+  return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function bind(){
+  var btn=document.getElementById("redPacketIssueBtn");
+  if(!btn || btn.dataset.bound==="1")return;
+  btn.dataset.bound="1";
+
+  btn.onclick=async function(){
+    var idEl=document.getElementById("redPacketPlayerId");
+    var amountEl=document.getElementById("redPacketAmountInput");
+
+    var u=(idEl&&idEl.value||"").trim();
+    var amount=Math.max(0,Number(amountEl&&amountEl.value||0));
+
+    if(!u || !(amount>0)){
+      alert("請輸入玩家 ID 及紅包金額");
+      return false;
+    }
+
+    try{
+      var player=await get("/players/"+safeKey(u));
+      if(!player){
+        alert("找不到這個玩家 ID");
+        return false;
+      }
+
+      /*
+        若玩家尚有未領紅包，新的發放金額累加，不覆蓋掉舊紅包。
+      */
+      var current=await get("/redPackets/"+safeKey(u));
+      var old=Math.max(0,Number(current&&current.amount||0));
+      var total=Math.round((old+amount)*100)/100;
+
+      await put("/redPackets/"+safeKey(u),{
+        amount:total,
+        issuedAt:Date.now()
+      });
+
+      idEl.value="";
+      amountEl.value="";
+      alert("紅包已發放給 "+u+"："+money(amount));
+    }catch(e){
+      console.error(e);
+      alert("紅包發放失敗，請重新再試");
     }
 
     return false;
