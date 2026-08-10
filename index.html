@@ -1287,7 +1287,7 @@ html{
 
 
 <nav class="categories" id="xmCategoryNav">
-  <a class="cat active" data-section="ATG" href="#ATG">ATG</a>
+  <a class="cat" data-section="ATG" href="#ATG">ATG</a>
   <a class="cat" data-section="RSG" href="#RSG">RSG</a>
   <a class="cat" data-section="SPORT" href="#SPORT">體育</a>
   <a class="cat" data-section="TABLE" href="#TABLE">百家樂</a>
@@ -3329,6 +3329,9 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 </script>
 
 
+
+
+
 <script id="xm-category-scrollspy-script">
 (function(){
   "use strict";
@@ -3337,95 +3340,112 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   if(!nav) return;
 
   var ids=["ATG","RSG","SPORT","TABLE"];
-  var sections=ids.map(function(id){return document.getElementById(id);}).filter(Boolean);
-  var links={};
-
-  nav.querySelectorAll(".cat[data-section]").forEach(function(link){
-    links[link.getAttribute("data-section")]=link;
-  });
+  var sections=ids.map(function(id){
+    return document.getElementById(id);
+  }).filter(Boolean);
 
   function activate(id){
-    nav.querySelectorAll(".cat").forEach(function(link){
-      link.classList.toggle("active",link.getAttribute("data-section")===id);
+    nav.querySelectorAll(".cat[data-section]").forEach(function(link){
+      link.classList.toggle(
+        "active",
+        link.getAttribute("data-section")===id
+      );
     });
+  }
 
-    var active=links[id];
-    if(active && active.scrollIntoView){
-      /* Only move the horizontal category strip, not the page itself. */
-      try{
-        active.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
-      }catch(e){}
-    }
+  function visibleHeight(rect){
+    var top=Math.max(rect.top,0);
+    var bottom=Math.min(rect.bottom,window.innerHeight);
+    return Math.max(0,bottom-top);
   }
 
   function detect(){
-    if(location.hash && location.hash.indexOf("-modal")!==-1) return;
+    /* 只有首頁捲動時才判斷，不干擾 modal 頁面 */
+    if(location.hash && location.hash.indexOf("-modal")!==-1){
+      return;
+    }
 
-    var marker=Math.max(110,window.innerHeight*.24);
-    var best=null;
-    var bestDistance=Infinity;
+    var bestId=null;
+    var bestVisible=-1;
 
     sections.forEach(function(section){
       var rect=section.getBoundingClientRect();
+      var visible=visibleHeight(rect);
 
-      /* Prefer a section currently crossing the upper reading line. */
-      if(rect.top<=marker && rect.bottom>marker){
-        best=section;
-        bestDistance=0;
-        return;
-      }
-
-      if(bestDistance!==0){
-        var distance=Math.abs(rect.top-marker);
-        if(distance<bestDistance){
-          bestDistance=distance;
-          best=section;
-        }
+      if(visible>bestVisible){
+        bestVisible=visible;
+        bestId=section.id;
       }
     });
 
-    if(best) activate(best.id);
+    /*
+      如果目前沒有任何區塊真的出現在畫面中，
+      用距離視窗中央最近的區塊當作備援。
+    */
+    if(bestVisible<=0){
+      var center=window.innerHeight/2;
+      var bestDistance=Infinity;
+
+      sections.forEach(function(section){
+        var rect=section.getBoundingClientRect();
+        var sectionCenter=(rect.top+rect.bottom)/2;
+        var distance=Math.abs(sectionCenter-center);
+
+        if(distance<bestDistance){
+          bestDistance=distance;
+          bestId=section.id;
+        }
+      });
+    }
+
+    if(bestId){
+      activate(bestId);
+    }
   }
 
   var ticking=false;
-  function onScroll(){
+  function scheduleDetect(){
     if(ticking) return;
     ticking=true;
+
     requestAnimationFrame(function(){
       detect();
       ticking=false;
     });
   }
 
-  window.addEventListener("scroll",onScroll,{passive:true});
-  window.addEventListener("resize",onScroll);
+  window.addEventListener("scroll",scheduleDetect,{passive:true});
+  window.addEventListener("resize",scheduleDetect);
 
   nav.addEventListener("click",function(e){
     var link=e.target.closest && e.target.closest(".cat[data-section]");
     if(!link) return;
 
     var id=link.getAttribute("data-section");
+    var target=document.getElementById(id);
+    if(!target) return;
+
+    e.preventDefault();
     activate(id);
 
-    var target=document.getElementById(id);
-    if(target){
-      e.preventDefault();
+    /*
+      將目標區塊捲到分類列下方。
+      不用 hash 跳轉，避免 hash 狀態干擾 modal/分類判斷。
+    */
+    var navHeight=nav.getBoundingClientRect().height || 0;
+    var top=target.getBoundingClientRect().top
+      + window.pageYOffset
+      - navHeight
+      - 14;
 
-      var navHeight=nav.getBoundingClientRect().height || 0;
-      var top=target.getBoundingClientRect().top+window.pageYOffset-navHeight-12;
-
-      window.scrollTo({
-        top:Math.max(0,top),
-        behavior:"smooth"
-      });
-
-      if(history.replaceState){
-        history.replaceState(null,"","#"+id);
-      }
-    }
+    window.scrollTo({
+      top:Math.max(0,top),
+      behavior:"smooth"
+    });
   });
 
-  detect();
+  /* 首次載入依實際畫面位置判斷，不硬指定 ATG 或百家樂 */
+  scheduleDetect();
 })();
 </script>
 
