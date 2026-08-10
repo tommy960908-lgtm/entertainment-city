@@ -245,7 +245,7 @@ body:has(#TABLE:target) .categories .cat[href="#TABLE"]{
 
 
 /* 快速儲值金額：完全不靠 JavaScript，同頁 hash 切換仍保留 radio 選中狀態 */
-#xmTransferAmount::after{content:"請先選擇金額";}
+
 
 body:has(#dep500:checked) #xmTransferAmount::after{content:"500.00";}
 body:has(#dep1000:checked) #xmTransferAmount::after{content:"1,000.00";}
@@ -5322,6 +5322,49 @@ setTimeout(refresh,250);
 
 window.xmRefreshWithdrawableBalance=refresh;
 window.xmGetWithdrawableBalance=calculateWithdrawable;
+})();
+</script>
+
+
+<script id="xm-deposit-confirm-amount-authority">
+(function(){
+"use strict";
+
+function renderDepositConfirmAmount(){
+  var input=document.getElementById("xmDepositAmount");
+  var amount=document.getElementById("xmTransferAmount");
+  if(!input || !amount) return;
+
+  var n=Number(input.value||0);
+  amount.textContent=n>0
+    ? n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})
+    : "";
+}
+
+/* 手動輸入時即時同步 */
+var input=document.getElementById("xmDepositAmount");
+if(input){
+  input.addEventListener("input",renderDepositConfirmAmount);
+  input.addEventListener("change",renderDepositConfirmAmount);
+}
+
+/* 快捷金額也同步成同一個數字來源 */
+document.querySelectorAll('input[name="depositQuick"]').forEach(function(r){
+  r.addEventListener("change",function(){
+    var i=document.getElementById("xmDepositAmount");
+    if(i) i.value=this.value;
+    renderDepositConfirmAmount();
+  });
+});
+
+/* 進入確認金額頁時，再強制顯示一次實際輸入數字 */
+window.addEventListener("hashchange",function(){
+  if(location.hash==="#transfer-demo-modal"){
+    renderDepositConfirmAmount();
+  }
+});
+
+window.xmRenderDepositConfirmAmount=renderDepositConfirmAmount;
 })();
 </script>
 
