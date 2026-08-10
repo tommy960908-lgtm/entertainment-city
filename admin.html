@@ -129,7 +129,7 @@ body.xm-admin-authenticated{overflow:auto!important;height:auto!important}
 
     <section id="playersView" class="panel">
       <div class="panel-head"><h2>玩家管理</h2><button type="button" class="ghost" data-action="create-user">新增玩家</button></div>
-      <div class="table-wrap"><table><thead><tr><th>帳號</th><th>餘額</th><th>返水</th><th>流水</th><th>操作</th></tr></thead><tbody id="playersBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>帳號</th><th>餘額</th><th>返水</th><th>流水</th><th>帳號管理</th></tr></thead><tbody id="playersBody"></tbody></table></div>
     </section>
 
     <section id="transactionsView" class="panel hidden">
@@ -189,7 +189,7 @@ function render(){
 
   byId("playersBody").innerHTML=names.length?names.map(function(u){
     return '<tr><td><b>'+esc(u)+'</b></td><td class="money">'+money(us[u].balance)+'</td><td>'+money(localStorage.getItem(rebateKey(u))||0)+'</td><td>'+money(localStorage.getItem(turnoverKey(u))||0)+'</td><td><div class="actions">'
-    +'<button type="button" class="ghost mini" data-action="adjust" data-user="'+encodeURIComponent(u)+'">加扣點</button>'
+    +''
     +'<button type="button" class="ghost mini" data-action="password" data-user="'+encodeURIComponent(u)+'">改密碼</button>'
     +'<button type="button" class="danger mini" data-action="unlock" data-user="'+encodeURIComponent(u)+'">解除交易</button>'
     +'</div></td></tr>';
@@ -235,13 +235,6 @@ document.addEventListener("click",function(e){
     var un=(byId("mUser").value||"").trim(),pw=byId("mPass").value||"",bal=Math.max(0,Number(byId("mAmount").value)||0),us=getUsers();
     if(!un||!pw||us[un])return;
     us[un]={password:pw,balance:bal};saveUsers(us);closeModal();render();return
-  }
-  if(action==="adjust"){
-    openModal("加扣點｜"+u,'<div class="field"><label>正數加點，負數扣點</label><input id="mAmount" type="number"></div><button type="button" class="primary" data-action="adjust-save" data-user="'+encodeURIComponent(u)+'">確認</button>');return
-  }
-  if(action==="adjust-save"){
-    var val=Number(byId("mAmount").value),us2=getUsers();if(!Number.isFinite(val)||!us2[u])return;
-    us2[u].balance=Math.max(0,Number(us2[u].balance||0)+val);saveUsers(us2);closeModal();render();return
   }
   if(action==="password"){
     openModal("改密碼｜"+u,'<div class="field"><label>新密碼</label><input id="mPass"></div><button type="button" class="primary" data-action="password-save" data-user="'+encodeURIComponent(u)+'">確認</button>');return
@@ -534,8 +527,8 @@ setTimeout(showNextNotice,300);
 
 <div id="xmRequestNotice" class="xm-request-notice">
   <div class="xm-request-notice-card">
-    <div class="xm-request-notice-title">新交易申請</div>
-    <div id="xmRequestNoticeInfo" class="xm-request-info"></div>
+    <div class="xm-request-notice-title">⚠️ 新交易待審核</div>
+    <div id="xmRequestNoticeInfo" class="xm-request-info"></div><div style="color:#9b9589;font-size:12px;line-height:1.6;margin:-4px 0 14px">接受後系統會自動處理玩家餘額；拒絕則不變更餘額。</div>
     <div class="xm-request-notice-actions">
       <button id="xmNoticeAccept" class="ok" type="button">接受</button>
       <button id="xmNoticeReject" class="danger" type="button">拒絕</button>
