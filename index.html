@@ -3699,5 +3699,86 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 </script>
 
 
+
+<script id="xm-player-balance-sync">
+(function(){
+  "use strict";
+
+  function currentUser(){
+    return localStorage.getItem("xm_demo_session") || "";
+  }
+
+  function readUsers(){
+    try{
+      return JSON.parse(localStorage.getItem("xm_demo_users") || "{}");
+    }catch(e){
+      return {};
+    }
+  }
+
+  function formatMoney(v){
+    return Number(v || 0).toLocaleString("en-US",{
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function syncBalance(){
+    var u=currentUser();
+    if(!u) return;
+
+    var users=readUsers();
+    if(!users[u]) return;
+
+    var bal=Number(users[u].balance || 0);
+    var formatted=formatMoney(bal);
+
+    var top=document.getElementById("xmTopBalance");
+    if(top) top.textContent=formatted;
+
+    var wd=document.getElementById("xmWithdrawBalance");
+    if(wd) wd.textContent=formatted;
+
+    document.querySelectorAll(".xmCurrentBalance").forEach(function(el){
+      el.textContent=formatted;
+    });
+
+    /* 常見個人頁/餘額欄位，一併同步 */
+    [
+      "xmProfileBalance",
+      "xmMyBalance",
+      "xmUserBalance",
+      "xmRebateCurrentBalance"
+    ].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.textContent=formatted;
+    });
+  }
+
+  /* 後台在另一個分頁修改 localStorage 時，這裡會立即收到 */
+  window.addEventListener("storage",function(e){
+    if(e.key==="xm_demo_users"){
+      syncBalance();
+    }
+  });
+
+  /* 回到玩家頁 / 切頁時也重新同步 */
+  window.addEventListener("focus",syncBalance);
+  window.addEventListener("pageshow",syncBalance);
+  window.addEventListener("hashchange",syncBalance);
+
+  /* Safari storage event 偶爾延遲，用輕量輪詢保底 */
+  setInterval(syncBalance,700);
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",syncBalance);
+  }else{
+    syncBalance();
+  }
+
+  window.xmSyncPlayerBalance=syncBalance;
+})();
+</script>
+
 </body>
 </html>
