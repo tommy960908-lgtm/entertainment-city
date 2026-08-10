@@ -1813,12 +1813,20 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   function saveRequests(a){localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a))}
   function createRequest(type,amount){
     var u=user(); if(!u)return false;
+    try{
+      var existing=JSON.parse(localStorage.getItem("xm_admin_requests_v1")||"[]");
+      if(Array.isArray(existing) && existing.some(function(r){return r&&r.user===u&&r.status==="pending"})){
+        location.hash="transaction-pending-modal";
+        return false;
+      }
+    }catch(e){}
     var deadline=Date.now()+60*60*1000;
     var tx={id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),user:u,type:type,amount:Number(amount),createdAt:Date.now(),deadline:deadline,status:"pending"};
     var a=requests(); a.unshift(tx); saveRequests(a);
     localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
     localStorage.setItem("xm_active_transaction_until",String(deadline));
     localStorage.setItem("xm_active_transaction_type",type);
+    localStorage.setItem("xm_admin_request_ping",String(Date.now()));
     return true;
   }
   function paint(){
@@ -3584,36 +3592,112 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 </script>
 
 
+
 <script id="xm-admin-request-player-bridge">
 (function(){
   "use strict";
-  function user(){return localStorage.getItem("xm_demo_session")||""}
-  function requests(){try{var a=JSON.parse(localStorage.getItem("xm_admin_requests_v1")||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
-  function saveRequests(a){localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a))}
+
+  function user(){
+    return localStorage.getItem("xm_demo_session") || "";
+  }
+
+  function requests(){
+    try{
+      var a=JSON.parse(localStorage.getItem("xm_admin_requests_v1") || "[]");
+      return Array.isArray(a) ? a : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function saveRequests(a){
+    localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a));
+  }
+
+  function hasPending(u){
+    return requests().some(function(r){
+      return r && r.user===u && r.status==="pending";
+    });
+  }
+
   function depositAmount(){
     var input=document.getElementById("xmDepositAmount");
-    var n=Number(input&&input.value||0);
-    if(n>0)return n;
+    var n=Number(input && input.value || 0);
+    if(n>0) return n;
+
     var checked=document.querySelector('input[name="depositQuick"]:checked');
-    return Number(checked&&checked.value||0);
+    return Number(checked && checked.value || 0);
   }
-  window.xmSubmitDepositRequest=function(e){
-    if(e){e.preventDefault();e.stopPropagation()}
-    var u=user(); if(!u){location.hash="login-required-modal";return false}
-    if(window.xmTransactionLocked&&window.xmTransactionLocked()){location.hash="transaction-pending-modal";return false}
-    var amount=depositAmount();
-    if(!(amount>0)){location.hash="deposit-modal";return false}
+
+  function createRequest(type,amount){
+    var u=user();
+    if(!u) return false;
+
+    if(hasPending(u)){
+      location.hash="transaction-pending-modal";
+      return false;
+    }
+
     var deadline=Date.now()+60*60*1000;
-    var tx={id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),user:u,type:"deposit",amount:amount,createdAt:Date.now(),deadline:deadline,status:"pending"};
-    var a=requests();a.unshift(tx);saveRequests(a);
+    var tx={
+      id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),
+      user:u,
+      type:type,
+      amount:Number(amount),
+      createdAt:Date.now(),
+      deadline:deadline,
+      status:"pending"
+    };
+
+    var a=requests();
+    a.unshift(tx);
+    saveRequests(a);
+
     localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
     localStorage.setItem("xm_active_transaction_until",String(deadline));
-    localStorage.setItem("xm_active_transaction_type","deposit");
+    localStorage.setItem("xm_active_transaction_type",type);
+
+    /* 通知同網域其他分頁 */
+    localStorage.setItem("xm_admin_request_ping",String(Date.now()));
+
+    return true;
+  }
+
+  window.xmSubmitDepositRequest=function(e){
+    if(e){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    var u=user();
+    if(!u){
+      location.hash="login-required-modal";
+      return false;
+    }
+
+    var amount=depositAmount();
+    if(!(amount>0)){
+      location.hash="deposit-modal";
+      return false;
+    }
+
+    /*
+      不檢查舊 xmTransactionLocked：
+      舊倒數程式會在 capture 階段先建 lock，
+      這裡以「是否已有 pending request」作為唯一防重判斷。
+    */
+    if(!createRequest("deposit",amount)){
+      return false;
+    }
+
     location.hash="payment-wait-modal";
     return false;
   };
+
+  window.xmCreateAdminRequest=createRequest;
 })();
 </script>
+
 
 </body>
 </html>
