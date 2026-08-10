@@ -2030,7 +2030,6 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   }
   function paint(){
     var b=fmt(balance());
-    var x=document.getElementById("xmWithdrawBalance");if(x)x.textContent=b;
     var top=document.getElementById("xmTopBalance");if(top)top.textContent=b;
     document.querySelectorAll(".xmCurrentBalance").forEach(function(el){el.textContent=b});
   }
@@ -3943,9 +3942,6 @@ window.xmRenderTransactionHistory=render;
     var top=document.getElementById("xmTopBalance");
     if(top) top.textContent=formatted;
 
-    var wd=document.getElementById("xmWithdrawBalance");
-    if(wd) wd.textContent=formatted;
-
     document.querySelectorAll(".xmCurrentBalance").forEach(function(el){
       el.textContent=formatted;
     });
@@ -4003,7 +3999,7 @@ async function patch(path,v){ const r=await fetch(DB+path+".json",{method:"PATCH
 function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function setBalanceUI(v){
   const f=money(v);
-  ["xmTopBalance","xmWithdrawBalance","xmProfileBalance","xmMyBalance","xmUserBalance","xmRebateCurrentBalance"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=f});
+  ["xmTopBalance","xmProfileBalance","xmMyBalance","xmUserBalance","xmRebateCurrentBalance"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=f});
   document.querySelectorAll(".xmCurrentBalance").forEach(el=>el.textContent=f);
 }
 async function ensurePlayer(){
@@ -4964,45 +4960,7 @@ setTimeout(syncUI,300);
 </script>
 
 
-<script id="xm-withdrawable-balance-ui-v2">
-(function(){
-"use strict";
 
-async function refreshWithdrawable(){
-  if(typeof window.xmGetWithdrawableBalance!=="function") return;
-
-  try{
-    var available=await window.xmGetWithdrawableBalance();
-    var el=document.getElementById("xmWithdrawBalance");
-
-    if(el){
-      el.textContent=Number(available||0).toLocaleString("en-US",{
-        minimumFractionDigits:2,
-        maximumFractionDigits:2
-      });
-    }
-  }catch(e){}
-}
-
-window.addEventListener("hashchange",function(){
-  if(location.hash==="#withdraw-modal"){
-    refreshWithdrawable();
-  }
-});
-window.addEventListener("focus",refreshWithdrawable);
-window.addEventListener("pageshow",refreshWithdrawable);
-
-/* 防止其他舊餘額同步程式把提款頁又改回總餘額 */
-setInterval(function(){
-  if(location.hash==="#withdraw-modal"){
-    refreshWithdrawable();
-  }
-},600);
-
-setTimeout(refreshWithdrawable,200);
-window.xmRefreshWithdrawableBalance=refreshWithdrawable;
-})();
-</script>
 
 
 
@@ -5257,6 +5215,115 @@ window.xmRenderRedPacketHistory=renderHistory;
 })();
 </script>
 
+
+
+<script id="xm-withdrawable-display-authority">
+(function(){
+"use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var running=false;
+var lastValue=null;
+
+function user(){
+  return localStorage.getItem("xm_demo_session") || "";
+}
+
+function safeKey(s){
+  return encodeURIComponent(String(s)).replace(/\./g,"%2E");
+}
+
+function money(v){
+  return Number(v||0).toLocaleString("en-US",{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  });
+}
+
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+
+async function calculateWithdrawable(){
+  var u=user();
+  if(!u) return 0;
+
+  var k=safeKey(u);
+
+  var player=await get("/players/"+k);
+  var state=await get("/rebateState/"+k);
+
+  var total=Number(player && player.balance || 0);
+
+  /*
+    locked = 尚未完成 1 倍流水的返水。
+    紅包完全不在 locked 裡，所以紅包可直接提款。
+  */
+  var locked=Math.max(0,Number(state && state.locked || 0));
+
+  return Math.max(0,Math.round((total-locked)*100)/100);
+}
+
+async function refresh(){
+  if(running) return;
+  running=true;
+
+  try{
+    var available=await calculateWithdrawable();
+
+    /*
+      只有數字真的改變才更新 DOM，
+      避免手機 Safari 畫面閃爍。
+    */
+    if(lastValue===null || Math.abs(available-lastValue)>0.0001){
+      lastValue=available;
+      var el=document.getElementById("xmWithdrawBalance");
+      if(el){
+        el.textContent=money(available);
+        el.dataset.withdrawable="1";
+      }
+    }else{
+      /*
+        就算其他舊程式偷偷改了文字，也強制還原正確值。
+      */
+      var el2=document.getElementById("xmWithdrawBalance");
+      if(el2 && el2.textContent!==money(available)){
+        el2.textContent=money(available);
+      }
+    }
+  }catch(e){
+    console.error("可提款餘額同步失敗",e);
+  }finally{
+    running=false;
+  }
+}
+
+/*
+  只要提款頁開著，就以這一套數字為唯一來源。
+*/
+window.addEventListener("hashchange",function(){
+  if(location.hash==="#withdraw-modal"){
+    refresh();
+  }
+});
+window.addEventListener("focus",refresh);
+window.addEventListener("pageshow",refresh);
+
+/* 不需要 0.6 秒一直搶寫，1 秒核對一次就夠 */
+setInterval(function(){
+  if(location.hash==="#withdraw-modal"){
+    refresh();
+  }
+},1000);
+
+setTimeout(refresh,250);
+
+window.xmRefreshWithdrawableBalance=refresh;
+window.xmGetWithdrawableBalance=calculateWithdrawable;
+})();
+</script>
 
 </body>
 </html>

@@ -156,10 +156,10 @@ body.xm-admin-authenticated{overflow:auto!important;height:auto!important}
 
     <section id="redpacketsView" class="panel hidden">
       <div class="panel-head"><h2>紅包管理</h2></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px">
-        <input id="redPacketPlayerId" placeholder="玩家ID" style="padding:11px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
-        <input id="redPacketAmountInput" type="number" min="0" step="0.01" placeholder="紅包金額" style="padding:11px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
-        <button class="primary" type="button" id="redPacketIssueBtn">確認發放</button>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:14px;width:100%;box-sizing:border-box">
+        <input id="redPacketPlayerId" placeholder="玩家ID" style="width:100%;min-width:0;box-sizing:border-box;padding:10px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
+        <input id="redPacketAmountInput" type="number" min="0" step="0.01" placeholder="紅包金額" style="width:100%;min-width:0;box-sizing:border-box;padding:10px;border-radius:9px;border:1px solid #403521;background:#080808;color:#fff">
+        <button class="primary" type="button" id="redPacketIssueBtn" style="grid-column:1/-1;width:100%;box-sizing:border-box">確認發放</button>
       </div>
       <div style="color:#8f887c;font-size:12px">玩家領取後直接加入可提款餘額，不需要流水。</div>
     </section>
