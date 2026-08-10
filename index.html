@@ -3437,15 +3437,23 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
     lockTo(id);
 
-    var top = target.getBoundingClientRect().top +
-              (window.pageYOffset || 0) -
-              (nav.getBoundingClientRect().height || 0) -
-              12;
+    if(id === "ELECTRONIC"){
+      /* 電子按鈕直接回到首頁最上方，避免停在電子區中段後被判成體育 */
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }else{
+      var top = target.getBoundingClientRect().top +
+                (window.pageYOffset || 0) -
+                (nav.getBoundingClientRect().height || 0) -
+                12;
 
-    window.scrollTo({
-      top: Math.max(0, top),
-      behavior: "smooth"
-    });
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: "smooth"
+      });
+    }
   });
 
   // 使用者自己手動滑動時，立即解除手動鎖定，恢復自動偵測。
