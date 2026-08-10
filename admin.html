@@ -116,7 +116,7 @@ body.xm-admin-authenticated{overflow:auto!important;height:auto!important}
     <div class="topin">
       <div class="title">XM娛樂城｜後台管理</div>
       <div class="top-actions">
-        <button type="button" class="ghost" data-action="refresh">重新整理</button>
+        <button type="button" class="ghost" data-action="refresh">重新整理</button><button type="button" class="danger" id="xmAdminPersistentLogout">登出</button>
         <button class="danger" type="button" id="xmAdminLogoutBtn">登出</button>
       </div>
     </div>
@@ -580,7 +580,7 @@ setTimeout(showNextNotice,300);
     document.body.classList.add("xm-admin-authenticated");
     var panel=document.getElementById("admin-panel");
     if(panel) panel.scrollTop=0;
-    try{ sessionStorage.setItem(SESSION_KEY,"1"); }catch(e){}
+    try{ localStorage.setItem(SESSION_KEY,"1"); }catch(e){}
     if(typeof window.xmAdminRender==="function"){
       try{ window.xmAdminRender(); }catch(e){}
     }
@@ -588,7 +588,7 @@ setTimeout(showNextNotice,300);
 
   function showLogin(){
     document.body.classList.remove("xm-admin-authenticated");
-    try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){}
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
     history.replaceState(null,"",location.pathname + location.search);
     var u=document.getElementById("xmAdminUser");
     var p=document.getElementById("xmAdminPass");
@@ -627,7 +627,7 @@ setTimeout(showNextNotice,300);
 
     var authenticated=false;
     try{
-      authenticated=sessionStorage.getItem(SESSION_KEY)==="1";
+      authenticated=localStorage.getItem(SESSION_KEY)==="1";
     }catch(e){}
 
     if(authenticated){
@@ -724,6 +724,84 @@ window.xmRejectRequestById=function(id){window.xmFirebaseReject(id);return false
 
 setInterval(()=>renderRemote().catch(()=>{}),900);
 setTimeout(()=>renderRemote().catch(console.error),300);
+})();
+</script>
+
+
+<script id="xm-admin-persistent-login">
+(function(){
+"use strict";
+
+var SESSION_KEYS = [
+  "xm_admin_session",
+  "xm_admin_authenticated_v1"
+];
+
+function clearAdminLogin(){
+  SESSION_KEYS.forEach(function(k){
+    try{ localStorage.removeItem(k); }catch(e){}
+    try{ sessionStorage.removeItem(k); }catch(e){}
+  });
+
+  document.body.classList.remove("xm-admin-authenticated");
+
+  var panel=document.getElementById("admin-panel");
+  if(panel) panel.style.display="none";
+
+  var app=document.getElementById("appView");
+  if(app) app.classList.add("hidden");
+
+  var login=document.getElementById("loginView") || document.querySelector(".login");
+  if(login){
+    login.style.display="";
+    login.classList.remove("hidden");
+  }
+
+  try{
+    history.replaceState(null,"",location.pathname+location.search);
+  }catch(e){}
+
+  location.reload();
+}
+
+function bindLogout(){
+  var btn=document.getElementById("xmAdminPersistentLogout");
+  if(btn){
+    btn.onclick=function(e){
+      if(e){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      clearAdminLogin();
+      return false;
+    };
+  }
+}
+
+function persistExistingLogin(){
+  /*
+    If an older version authenticated this tab via sessionStorage,
+    promote it to localStorage once so upgrades don't log the admin out.
+  */
+  try{
+    if(sessionStorage.getItem("xm_admin_session")==="1"){
+      localStorage.setItem("xm_admin_session","1");
+    }
+    if(sessionStorage.getItem("xm_admin_authenticated_v1")==="1"){
+      localStorage.setItem("xm_admin_authenticated_v1","1");
+    }
+  }catch(e){}
+}
+
+persistExistingLogin();
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bindLogout);
+}else{
+  bindLogout();
+}
+
+window.xmAdminPersistentLogout=clearAdminLogin;
 })();
 </script>
 
