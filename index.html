@@ -3103,6 +3103,16 @@ window.xmRenderTransactionHistory=render;
       addHistory("claimed", rebate, issuedAt);
       writeRebate(0);
 
+      /*
+        Firebase 版：返水領取後建立同額 1 倍流水鎖定。
+        遠端餘額與鎖定狀態由 xmClaimRebateToFirebase 處理。
+      */
+      if(typeof window.xmClaimRebateToFirebase==="function"){
+        window.xmClaimRebateToFirebase(rebate,issuedAt).catch(function(e){
+          console.error("返水同步失敗",e);
+        });
+      }
+
       paintBalance(next);
       render();
 
@@ -4294,6 +4304,17 @@ async function submitWithdrawal(){
     return false;
   }
 
+  /* 最低提款金額 500 */
+  if(amount<500){
+    if(status){
+      status.textContent="最低提款金額為500";
+      status.style.display="block";
+    }else{
+      alert("最低提款金額為500");
+    }
+    return false;
+  }
+
   /*
     先查 Firebase。
     只有「確認按鈕被按下以前」就真的有另一筆 pending 提款，
@@ -4308,7 +4329,15 @@ async function submitWithdrawal(){
   }
 
   var balance=await getPlayerBalance(u);
-  if(amount>balance){
+  var withdrawable=balance;
+
+  if(typeof window.xmGetWithdrawableBalance==="function"){
+    try{
+      withdrawable=await window.xmGetWithdrawableBalance();
+    }catch(e){}
+  }
+
+  if(amount>withdrawable){
     if(status) status.textContent="";
     location.hash="withdraw-insufficient-modal";
     return false;
@@ -4433,6 +4462,242 @@ window.addEventListener("focus",syncFinishedWithdrawal);
 setInterval(syncFinishedWithdrawal,900);
 
 window.xmSubmitWithdrawalAuthoritative=submitWithdrawal;
+})();
+</script>
+
+
+<script id="xm-rebate-withdraw-lock-v1">
+(function(){
+"use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function user(){ return localStorage.getItem("xm_demo_session") || ""; }
+function safeKey(s){ return encodeURIComponent(String(s)).replace(/\./g,"%2E"); }
+function money(v){ return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function put(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+
+function lockedKey(u){ return "xm_rebate_locked_"+u; }
+function turnoverKey(u){ return "xm_rebate_turnover_"+u; }
+
+async function readRemoteState(){
+  var u=user();
+  if(!u) return {balance:0,locked:0,turnover:0};
+
+  var k=safeKey(u);
+  var player=await get("/players/"+k) || {id:u,balance:0};
+  var state=await get("/rebateState/"+k) || {locked:0,turnover:0};
+
+  var locked=Math.max(0,Number(state.locked||0));
+  var turnover=Math.max(0,Number(state.turnover||0));
+
+  localStorage.setItem(lockedKey(u),String(locked));
+  localStorage.setItem(turnoverKey(u),String(turnover));
+
+  return {
+    balance:Number(player.balance||0),
+    locked:locked,
+    turnover:turnover
+  };
+}
+
+function paintWithdrawable(balance,locked){
+  var available=Math.max(0,Number(balance||0)-Number(locked||0));
+  var el=document.getElementById("xmWithdrawBalance");
+  if(el) el.textContent=money(available);
+  return available;
+}
+
+/* 後台發放的返水同步到玩家端「可領返水」 */
+async function syncClaimableRebate(){
+  var u=user();
+  if(!u) return;
+  var k=safeKey(u);
+  var r=await get("/rebates/"+k);
+  if(!r) return;
+
+  var amount=Math.max(0,Number(r.amount||0));
+  localStorage.setItem("xm_rebate_balance_"+u,String(amount));
+  if(r.issuedAt){
+    localStorage.setItem("xm_rebate_issued_at_"+u,String(r.issuedAt));
+  }
+  if(window.xmRenderRebate) window.xmRenderRebate();
+}
+
+/*
+  領取返水：
+  1. 總餘額 + 返水
+  2. locked + 返水
+  3. turnover + 返水
+  4. 後台發放的 claimable 歸 0
+*/
+async function claimRebateToFirebase(amount,issuedAt){
+  var u=user();
+  if(!u) return false;
+
+  amount=Math.max(0,Number(amount||0));
+  if(!(amount>0)) return false;
+
+  var k=safeKey(u);
+  var player=await get("/players/"+k) || {id:u,balance:0,createdAt:Date.now()};
+  var state=await get("/rebateState/"+k) || {locked:0,turnover:0};
+
+  player.balance=Math.round((Number(player.balance||0)+amount)*100)/100;
+  state.locked=Math.round((Number(state.locked||0)+amount)*100)/100;
+  state.turnover=Math.round((Number(state.turnover||0)+amount)*100)/100;
+  state.updatedAt=Date.now();
+
+  await put("/players/"+k,player);
+  await put("/rebateState/"+k,state);
+  await put("/rebates/"+k,{amount:0,issuedAt:0});
+
+  localStorage.setItem(lockedKey(u),String(state.locked));
+  localStorage.setItem(turnoverKey(u),String(state.turnover));
+
+  try{
+    var users=JSON.parse(localStorage.getItem("xm_demo_users")||"{}");
+    if(users[u]){
+      users[u].balance=player.balance;
+      localStorage.setItem("xm_demo_users",JSON.stringify(users));
+    }
+  }catch(e){}
+
+  localStorage.setItem("xm_rebate_balance_"+u,"0");
+  localStorage.removeItem("xm_rebate_issued_at_"+u);
+
+  return true;
+}
+
+/*
+  遊戲扣點的唯一入口：
+  - 總餘額扣下注額
+  - 流水優先沖掉返水鎖定額度
+  - 每下注 1 點，解鎖 1 點
+*/
+window.xmSpendGamePoints=async function(amount){
+  var u=user();
+  if(!u) throw new Error("not logged in");
+
+  amount=Math.max(0,Number(amount||0));
+  if(!(amount>0)) return {ok:false};
+
+  var k=safeKey(u);
+  var player=await get("/players/"+k) || {id:u,balance:0};
+  var state=await get("/rebateState/"+k) || {locked:0,turnover:0};
+
+  var bal=Number(player.balance||0);
+  if(amount>bal) return {ok:false,reason:"balance"};
+
+  player.balance=Math.round((bal-amount)*100)/100;
+
+  var useLocked=Math.min(
+    amount,
+    Math.max(0,Number(state.locked||0)),
+    Math.max(0,Number(state.turnover||0))
+  );
+
+  state.locked=Math.max(0,Math.round((Number(state.locked||0)-useLocked)*100)/100);
+  state.turnover=Math.max(0,Math.round((Number(state.turnover||0)-amount)*100)/100);
+  state.updatedAt=Date.now();
+
+  /*
+    turnover 已完成時，剩餘 locked 一律解除。
+    正常情況兩者會同步歸零。
+  */
+  if(state.turnover<=0){
+    state.turnover=0;
+    state.locked=0;
+  }
+
+  await put("/players/"+k,player);
+  await put("/rebateState/"+k,state);
+
+  localStorage.setItem(lockedKey(u),String(state.locked));
+  localStorage.setItem(turnoverKey(u),String(state.turnover));
+
+  try{
+    var users=JSON.parse(localStorage.getItem("xm_demo_users")||"{}");
+    if(users[u]){
+      users[u].balance=player.balance;
+      localStorage.setItem("xm_demo_users",JSON.stringify(users));
+    }
+  }catch(e){}
+
+  if(typeof window.xmSyncPlayerBalance==="function"){
+    try{window.xmSyncPlayerBalance()}catch(e){}
+  }
+
+  paintWithdrawable(player.balance,state.locked);
+
+  return {
+    ok:true,
+    balance:player.balance,
+    locked:state.locked,
+    turnover:state.turnover,
+    withdrawable:Math.max(0,player.balance-state.locked)
+  };
+};
+
+/* 遊戲派彩：派彩金額直接加入總餘額，不增加返水鎖定 */
+window.xmCreditGameWinnings=async function(amount){
+  var u=user();
+  if(!u) throw new Error("not logged in");
+
+  amount=Math.max(0,Number(amount||0));
+  if(!(amount>0)) return false;
+
+  var k=safeKey(u);
+  var player=await get("/players/"+k) || {id:u,balance:0};
+  player.balance=Math.round((Number(player.balance||0)+amount)*100)/100;
+  await put("/players/"+k,player);
+
+  if(typeof window.xmSyncPlayerBalance==="function"){
+    try{window.xmSyncPlayerBalance()}catch(e){}
+  }
+  return true;
+};
+
+/* 提款時用這個值，不是總餘額 */
+window.xmGetWithdrawableBalance=async function(){
+  var s=await readRemoteState();
+  return Math.max(0,s.balance-s.locked);
+};
+
+async function syncUI(){
+  var u=user();
+  if(!u) return;
+  try{
+    await syncClaimableRebate();
+    var s=await readRemoteState();
+    paintWithdrawable(s.balance,s.locked);
+  }catch(e){}
+}
+
+window.xmClaimRebateToFirebase=claimRebateToFirebase;
+
+window.addEventListener("hashchange",function(){
+  if(location.hash==="#withdraw-modal" || location.hash==="#rebate-modal"){
+    syncUI();
+  }
+});
+window.addEventListener("focus",syncUI);
+window.addEventListener("pageshow",syncUI);
+setInterval(syncUI,1500);
+setTimeout(syncUI,300);
 })();
 </script>
 
