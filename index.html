@@ -3330,6 +3330,9 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
 
 
+
+
+
 <script id="xm-category-scrollspy-script">
 (function(){
   "use strict";
@@ -3344,43 +3347,52 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
   function activate(id){
     nav.querySelectorAll(".cat[data-section]").forEach(function(link){
-      link.classList.toggle("active", link.getAttribute("data-section") === id);
+      link.classList.toggle(
+        "active",
+        link.getAttribute("data-section") === id
+      );
     });
   }
 
   function detect(){
     if(!sections.length) return;
+
+    // modal 頁面不改首頁分類狀態
     if(location.hash && location.hash.indexOf("-modal") !== -1) return;
 
-    var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-    var navRect = nav.getBoundingClientRect();
-    var trigger = scrollY + Math.max(120, navRect.bottom + 24);
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var navHeight = nav.getBoundingClientRect().height || 0;
 
-    // At the very bottom, always activate the final category.
-    var doc = document.documentElement;
-    var atBottom = window.innerHeight + scrollY >= doc.scrollHeight - 8;
-    if(atBottom){
-      activate(sections[sections.length - 1].id);
-      return;
+    // 判斷線：分類列底下約 35px
+    var trigger = y + navHeight + 35;
+
+    // 預設電子
+    var current = sections[0].id;
+
+    for(var i=0;i<sections.length;i++){
+      var top = sections[i].getBoundingClientRect().top + y;
+
+      if(top <= trigger){
+        current = sections[i].id;
+      }else{
+        break;
+      }
     }
 
-    // Activate the last section whose top has passed the trigger line.
-    var activeId = sections[0].id;
+    // 頁面接近最底時，確保百家樂能亮
+    var doc = document.documentElement;
+    if(window.innerHeight + y >= doc.scrollHeight - 20){
+      current = "TABLE";
+    }
 
-    sections.forEach(function(section){
-      var top = section.getBoundingClientRect().top + scrollY;
-      if(top <= trigger){
-        activeId = section.id;
-      }
-    });
-
-    activate(activeId);
+    activate(current);
   }
 
   var ticking = false;
   function schedule(){
     if(ticking) return;
     ticking = true;
+
     requestAnimationFrame(function(){
       detect();
       ticking = false;
@@ -3398,16 +3410,15 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     e.preventDefault();
     activate(id);
 
-    var top = target.getBoundingClientRect().top +
-              (window.pageYOffset || 0) -
-              nav.getBoundingClientRect().height - 16;
+    var y = window.pageYOffset || 0;
+    var top = target.getBoundingClientRect().top + y - (nav.getBoundingClientRect().height || 0) - 20;
 
     window.scrollTo({
       top: Math.max(0, top),
       behavior: "smooth"
     });
 
-    setTimeout(detect, 500);
+    setTimeout(detect, 550);
   });
 
   window.addEventListener("scroll", schedule, {passive:true});
