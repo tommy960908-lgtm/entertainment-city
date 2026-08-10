@@ -3780,5 +3780,104 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 })();
 </script>
 
+
+<script id="xm-firebase-cross-device-player">
+(function(){
+"use strict";
+const DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function user(){ return localStorage.getItem("xm_demo_session")||""; }
+function usersLocal(){ try{return JSON.parse(localStorage.getItem("xm_demo_users")||"{}")}catch(e){return {}} }
+function safeKey(s){ return encodeURIComponent(String(s)).replace(/\./g,"%2E"); }
+async function get(path){ const r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"}); if(!r.ok) throw new Error("GET "+r.status); return await r.json(); }
+async function put(path,v){ const r=await fetch(DB+path+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)}); if(!r.ok) throw new Error("PUT "+r.status); return await r.json(); }
+async function patch(path,v){ const r=await fetch(DB+path+".json",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)}); if(!r.ok) throw new Error("PATCH "+r.status); return await r.json(); }
+
+function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function setBalanceUI(v){
+  const f=money(v);
+  ["xmTopBalance","xmWithdrawBalance","xmProfileBalance","xmMyBalance","xmUserBalance","xmRebateCurrentBalance"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=f});
+  document.querySelectorAll(".xmCurrentBalance").forEach(el=>el.textContent=f);
+}
+async function ensurePlayer(){
+  const u=user(); if(!u)return;
+  const k=safeKey(u);
+  let remote=await get("/players/"+k);
+  if(remote==null){
+    const lu=usersLocal(), bal=Number(lu[u]?.balance||0);
+    remote={id:u,balance:bal,createdAt:Date.now()};
+    await put("/players/"+k,remote);
+  }
+  setBalanceUI(remote.balance||0);
+}
+async function syncPlayer(){
+  const u=user(); if(!u)return;
+  const k=safeKey(u);
+  const remote=await get("/players/"+k);
+  if(remote){
+    const lu=usersLocal(); if(lu[u]){lu[u].balance=Number(remote.balance||0);localStorage.setItem("xm_demo_users",JSON.stringify(lu));}
+    setBalanceUI(remote.balance||0);
+  }
+  const hist=await get("/history/"+k);
+  if(hist){
+    const arr=Object.values(hist).sort((x,y)=>Number(y.finishedAt||y.createdAt||0)-Number(x.finishedAt||x.createdAt||0));
+    localStorage.setItem("xm_tx_history_v2_"+u,JSON.stringify(arr));
+  }
+}
+
+async function pendingExists(u){
+  const all=await get("/requests");
+  return !!(all && Object.values(all).some(r=>r && r.user===u && r.status==="pending"));
+}
+async function submitRemote(type,amount){
+  const u=user(); if(!u){location.hash="login-required-modal";return false}
+  amount=Number(amount||0);
+  if(!(amount>0)) return false;
+  await ensurePlayer();
+  if(await pendingExists(u)){location.hash="transaction-pending-modal";return false}
+  const id="tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);
+  const tx={id,user:u,type,amount,createdAt:Date.now(),status:"pending"};
+  await put("/requests/"+id,tx);
+  localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
+  localStorage.setItem("xm_active_transaction_until",String(Date.now()+3600000));
+  localStorage.setItem("xm_active_transaction_type",type);
+  location.hash=type==="deposit"?"payment-wait-modal":"withdraw-wait-modal";
+  return false;
+}
+
+function depositAmount(){
+  const el=document.getElementById("xmDepositAmount");
+  let n=Number(el?.value||0);
+  if(n>0)return n;
+  const q=document.querySelector('input[name="depositQuick"]:checked');
+  return Number(q?.value||0);
+}
+function withdrawAmount(){
+  const ids=["xmWithdrawAmount","withdrawAmount","xmWithdrawInput"];
+  for(const id of ids){const el=document.getElementById(id);if(el&&Number(el.value)>0)return Number(el.value)}
+  const q=document.querySelector('input[name="withdrawQuick"]:checked');
+  return Number(q?.value||0);
+}
+
+window.xmSubmitDepositRequest=function(e){
+  if(e){e.preventDefault();e.stopPropagation();}
+  submitRemote("deposit",depositAmount()).catch(err=>{console.error(err);alert("交易送出失敗，請重新再試");});
+  return false;
+};
+window.xmSubmitWithdrawRequest=function(e){
+  if(e){e.preventDefault();e.stopPropagation();}
+  submitRemote("withdraw",withdrawAmount()).catch(err=>{console.error(err);alert("交易送出失敗，請重新再試");});
+  return false;
+};
+window.xmCreateAdminRequest=function(type,amount){ submitRemote(type,amount); return false; };
+
+window.addEventListener("focus",()=>syncPlayer().catch(console.error));
+window.addEventListener("pageshow",()=>syncPlayer().catch(console.error));
+window.addEventListener("hashchange",()=>syncPlayer().catch(console.error));
+setInterval(()=>syncPlayer().catch(()=>{}),1200);
+setTimeout(()=>ensurePlayer().then(syncPlayer).catch(console.error),300);
+})();
+</script>
+
 </body>
 </html>
