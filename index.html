@@ -5368,5 +5368,107 @@ window.xmRenderDepositConfirmAmount=renderDepositConfirmAmount;
 })();
 </script>
 
+
+<script id="xm-first-deposit-bonus-v1">
+(function(){
+"use strict";
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function user(){return localStorage.getItem("xm_demo_session")||""}
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function put(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+
+/*
+ 首存優惠：
+ - 只計「後台接受成功」的第一筆存款
+ - 返存款金額 50%
+ - 最高 5000
+ - 第二筆成功存款起不再返
+ - 優惠直接加入玩家餘額，不列入返水鎖定
+*/
+async function applyFirstDepositBonus(){
+  var u=user(); if(!u)return;
+  var k=safeKey(u);
+
+  try{
+    var bonusState=await get("/firstDepositBonus/"+k);
+    if(bonusState && bonusState.used) return;
+
+    var all=await get("/requests");
+    if(!all)return;
+
+    var deposits=Object.values(all).filter(function(x){
+      return x && x.user===u && x.type==="deposit" &&
+             (x.status==="success" || x.status==="approved");
+    }).sort(function(a,b){
+      return Number(a.createdAt||0)-Number(b.createdAt||0);
+    });
+
+    if(!deposits.length)return;
+
+    var first=deposits[0];
+    var amount=Math.max(0,Number(first.amount||0));
+    if(!(amount>0))return;
+
+    /*
+      先以該筆交易 ID 建立領取標記，避免輪詢重複加點。
+    */
+    var state=await get("/firstDepositBonus/"+k);
+    if(state && state.used)return;
+
+    var bonus=Math.min(amount*0.5,5000);
+    bonus=Math.round(bonus*100)/100;
+
+    var player=await get("/players/"+k) || {id:u,balance:0};
+    player.balance=Math.round((Number(player.balance||0)+bonus)*100)/100;
+
+    await put("/players/"+k,player);
+    await put("/firstDepositBonus/"+k,{
+      used:true,
+      depositId:first.id||"",
+      depositAmount:amount,
+      bonus:bonus,
+      creditedAt:Date.now()
+    });
+
+    try{
+      var users=JSON.parse(localStorage.getItem("xm_demo_users")||"{}");
+      if(users[u]){
+        users[u].balance=player.balance;
+        localStorage.setItem("xm_demo_users",JSON.stringify(users));
+      }
+    }catch(e){}
+
+    if(typeof window.xmSyncPlayerBalance==="function"){
+      try{window.xmSyncPlayerBalance()}catch(e){}
+    }
+    if(typeof window.xmRefreshWithdrawableBalance==="function"){
+      try{window.xmRefreshWithdrawableBalance()}catch(e){}
+    }
+  }catch(e){
+    console.error("首存50%優惠處理失敗",e);
+  }
+}
+
+window.addEventListener("focus",applyFirstDepositBonus);
+window.addEventListener("pageshow",applyFirstDepositBonus);
+setInterval(applyFirstDepositBonus,1200);
+setTimeout(applyFirstDepositBonus,500);
+
+window.xmApplyFirstDepositBonus=applyFirstDepositBonus;
+})();
+</script>
+
 </body>
 </html>
