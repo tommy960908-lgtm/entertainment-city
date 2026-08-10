@@ -805,5 +805,88 @@ window.xmAdminPersistentLogout=clearAdminLogin;
 })();
 </script>
 
+
+<script id="xm-firebase-rebate-issuance-v1">
+(function(){
+"use strict";
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function put(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+function money(v){
+  return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function bind(){
+  var btn=document.getElementById("rebateIssueBtn");
+  if(!btn || btn.dataset.firebaseBound==="1") return;
+
+  /*
+    Clone 掉舊的 localStorage-only handler，
+    後台返水改成直接發到 Firebase。
+  */
+  var fresh=btn.cloneNode(true);
+  btn.parentNode.replaceChild(fresh,btn);
+  fresh.dataset.firebaseBound="1";
+
+  fresh.onclick=async function(){
+    var id=document.getElementById("rebatePlayerId");
+    var amountEl=document.getElementById("rebateAmountInput");
+
+    var u=(id && id.value || "").trim();
+    var amount=Math.max(0,Number(amountEl && amountEl.value || 0));
+
+    if(!u || !(amount>0)){
+      alert("請輸入玩家 ID 及返水金額");
+      return false;
+    }
+
+    try{
+      var player=await get("/players/"+safeKey(u));
+      if(!player){
+        alert("找不到這個玩家 ID");
+        return false;
+      }
+
+      await put("/rebates/"+safeKey(u),{
+        amount:amount,
+        issuedAt:Date.now()
+      });
+
+      if(id) id.value="";
+      if(amountEl) amountEl.value="";
+
+      alert("返水已發放給 "+u+"："+money(amount));
+    }catch(e){
+      console.error(e);
+      alert("返水發放失敗，請重新再試");
+    }
+
+    return false;
+  };
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bind);
+}else{
+  bind();
+}
+setTimeout(bind,300);
+})();
+</script>
+
 </body>
 </html>
