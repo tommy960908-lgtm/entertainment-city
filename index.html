@@ -1238,6 +1238,19 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
   padding-bottom:74px!important;
 }
 
+
+#xmCategoryNav .cat{
+  transition:color .18s ease,border-color .18s ease,background .18s ease;
+}
+#xmCategoryNav .cat.active{
+  color:#f0c75f!important;
+  border-color:#b9882b!important;
+  background:rgba(208,157,48,.12)!important;
+}
+html{
+  scroll-behavior:smooth;
+}
+
 </style>
 </head>
 <body>
@@ -1273,11 +1286,11 @@ body:has(#dep5000:checked) #xmTransferAmount::after{content:"5,000.00";}
 </section>
 
 
-<nav class="categories">
-  <a class="cat" href="#ATG">ATG</a>
-  <a class="cat" href="#RSG">RSG</a>
-  <a class="cat" href="#SPORT">體育</a>
-  <a class="cat" href="#TABLE">百家樂</a>
+<nav class="categories" id="xmCategoryNav">
+  <a class="cat active" data-section="ATG" href="#ATG">ATG</a>
+  <a class="cat" data-section="RSG" href="#RSG">RSG</a>
+  <a class="cat" data-section="SPORT" href="#SPORT">體育</a>
+  <a class="cat" data-section="TABLE" href="#TABLE">百家樂</a>
 </nav>
 
 
@@ -3312,6 +3325,107 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   window.addEventListener("hashchange",paint);
   window.addEventListener("load",paint);
   paint();
+})();
+</script>
+
+
+<script id="xm-category-scrollspy-script">
+(function(){
+  "use strict";
+
+  var nav=document.getElementById("xmCategoryNav");
+  if(!nav) return;
+
+  var ids=["ATG","RSG","SPORT","TABLE"];
+  var sections=ids.map(function(id){return document.getElementById(id);}).filter(Boolean);
+  var links={};
+
+  nav.querySelectorAll(".cat[data-section]").forEach(function(link){
+    links[link.getAttribute("data-section")]=link;
+  });
+
+  function activate(id){
+    nav.querySelectorAll(".cat").forEach(function(link){
+      link.classList.toggle("active",link.getAttribute("data-section")===id);
+    });
+
+    var active=links[id];
+    if(active && active.scrollIntoView){
+      /* Only move the horizontal category strip, not the page itself. */
+      try{
+        active.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+      }catch(e){}
+    }
+  }
+
+  function detect(){
+    if(location.hash && location.hash.indexOf("-modal")!==-1) return;
+
+    var marker=Math.max(110,window.innerHeight*.24);
+    var best=null;
+    var bestDistance=Infinity;
+
+    sections.forEach(function(section){
+      var rect=section.getBoundingClientRect();
+
+      /* Prefer a section currently crossing the upper reading line. */
+      if(rect.top<=marker && rect.bottom>marker){
+        best=section;
+        bestDistance=0;
+        return;
+      }
+
+      if(bestDistance!==0){
+        var distance=Math.abs(rect.top-marker);
+        if(distance<bestDistance){
+          bestDistance=distance;
+          best=section;
+        }
+      }
+    });
+
+    if(best) activate(best.id);
+  }
+
+  var ticking=false;
+  function onScroll(){
+    if(ticking) return;
+    ticking=true;
+    requestAnimationFrame(function(){
+      detect();
+      ticking=false;
+    });
+  }
+
+  window.addEventListener("scroll",onScroll,{passive:true});
+  window.addEventListener("resize",onScroll);
+
+  nav.addEventListener("click",function(e){
+    var link=e.target.closest && e.target.closest(".cat[data-section]");
+    if(!link) return;
+
+    var id=link.getAttribute("data-section");
+    activate(id);
+
+    var target=document.getElementById(id);
+    if(target){
+      e.preventDefault();
+
+      var navHeight=nav.getBoundingClientRect().height || 0;
+      var top=target.getBoundingClientRect().top+window.pageYOffset-navHeight-12;
+
+      window.scrollTo({
+        top:Math.max(0,top),
+        behavior:"smooth"
+      });
+
+      if(history.replaceState){
+        history.replaceState(null,"","#"+id);
+      }
+    }
+  });
+
+  detect();
 })();
 </script>
 
