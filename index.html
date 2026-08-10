@@ -2032,6 +2032,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   var LOCK_KEY = "xm_active_transaction_until";
   var TYPE_KEY = "xm_active_transaction_type";
   var timer = null;
+  var finished = false;
 
   function now(){ return Date.now(); }
 
@@ -2040,6 +2041,8 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   }
 
   function isLocked(){
+    if(finished) return false;
+
     var until = getLockUntil();
     if(!until) return false;
 
@@ -2051,6 +2054,8 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   }
 
   function createLock(type){
+    if(finished) return 0;
+
     var until = now() + 60 * 60 * 1000;
     localStorage.setItem(LOCK_KEY, String(until));
     localStorage.setItem(TYPE_KEY, type || "transaction");
@@ -2060,15 +2065,43 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   function clearLock(){
     localStorage.removeItem(LOCK_KEY);
     localStorage.removeItem(TYPE_KEY);
+
+    [
+      "xm_transaction_lock_until",
+      "xm_payment_wait_deadline_v2",
+      "xm_payment_wait_deadline",
+      "xm_transaction_type"
+    ].forEach(function(k){
+      localStorage.removeItem(k);
+      try{ sessionStorage.removeItem(k); }catch(e){}
+    });
+
     if(timer){
       clearInterval(timer);
       timer = null;
     }
   }
 
-  /* 給未來後台人工解鎖使用 */
+  function finishTransactionUI(){
+    finished = true;
+    clearLock();
+
+    var box = document.getElementById("xmPaymentCountdown");
+    if(box) box.textContent = "00:00:00";
+
+    var title = document.getElementById("xmWaitTitle");
+    if(title) title.textContent = "交易已處理";
+
+    var status = document.getElementById("xmWaitStatus");
+    if(status) status.textContent = "";
+
+    var icon = document.getElementById("xmWaitIcon");
+    if(icon) icon.textContent = "✓";
+  }
+
   window.xmAdminReleaseTransaction = clearLock;
   window.xmTransactionLocked = isLocked;
+  window.xmFinishTransactionUI = finishTransactionUI;
 
   function isTransactionEntry(el){
     while(el && el !== document){
@@ -2091,7 +2124,6 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     return false;
   }
 
-  /* 捕獲階段攔截，優先於其他 click / onclick */
   document.addEventListener("click", function(e){
     if(!isTransactionEntry(e.target)) return;
 
@@ -2122,14 +2154,21 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   }
 
   function renderCountdown(){
+    if(finished) return;
+
     var box = document.getElementById("xmPaymentCountdown");
     var title = document.getElementById("xmWaitTitle");
     var status = document.getElementById("xmWaitStatus");
     var icon = document.getElementById("xmWaitIcon");
 
     var until = getLockUntil();
+
     if(!until){
-      if(box) box.textContent = "01:00:00";
+      if(box) box.textContent = "00:00:00";
+      if(timer){
+        clearInterval(timer);
+        timer = null;
+      }
       return;
     }
 
@@ -2146,72 +2185,39 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
     if(box) box.textContent = formatTime(remaining);
     if(title) title.textContent = "等待客服確認";
-    if(status) status.textContent = "請聯絡客服領取付款資訊";
+    if(status) status.textContent = "等待後台審核";
     if(icon) icon.textContent = "⏳";
   }
 
   function startTimer(){
+    if(finished) return;
     if(timer) clearInterval(timer);
     renderCountdown();
-    timer = setInterval(renderCountdown, 1000);
+    if(getLockUntil()){
+      timer = setInterval(renderCountdown, 1000);
+    }
   }
 
-  /* 存款：按確認金額頁的「確定」時正式建立鎖 */
-  document.addEventListener("click", function(e){
-    var el = e.target;
-    while(el && el !== document){
-      if(el.id === "xmPaymentDone"){
-        if(isLocked()){
-          e.preventDefault();
-          e.stopPropagation();
-          if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-          location.hash = "transaction-pending-modal";
-          return false;
-        }
-
-        createLock("deposit");
-        startTimer();
-        return;
-      }
-      el = el.parentNode;
-    }
-  }, true);
-
-  /* 提款：只要真正進入等待客服頁，就建立提款鎖 */
-  window.addEventListener("hashchange", function(){
-    if(location.hash === "#withdraw-waiting-modal"){
-      if(!isLocked()){
-        createLock("withdraw");
-      }
-      startTimer();
-    }
-
-    if(location.hash === "#payment-wait-modal"){
-      if(!isLocked()){
-        createLock("deposit");
-      }
-      startTimer();
-    }
-  });
-
-  /* 頁面重開 / 重新整理也保留鎖 */
+  /*
+    Firebase 版：舊程式不再在按鈕 click / hashchange 時自行重建交易。
+    交易鎖只由 Firebase 交易送出程式建立。
+  */
   window.addEventListener("load", function(){
     if(isLocked()){
       startTimer();
-    }
-
-    if(location.hash === "#payment-wait-modal" && !isLocked()){
-      createLock("deposit");
-      startTimer();
-    }
-
-    if(location.hash === "#withdraw-waiting-modal" && !isLocked()){
-      createLock("withdraw");
-      startTimer();
+    }else{
+      renderCountdown();
     }
   });
 
-  /* 定期清除過期鎖，即使不在倒數頁 */
+  window.addEventListener("hashchange", function(){
+    if(location.hash === "#payment-wait-modal" ||
+       location.hash === "#withdraw-waiting-modal"){
+      if(isLocked()) startTimer();
+      else renderCountdown();
+    }
+  });
+
   setInterval(function(){
     if(getLockUntil() && !isLocked()){
       clearLock();
@@ -3880,15 +3886,21 @@ setTimeout(()=>ensurePlayer().then(syncPlayer).catch(console.error),300);
 </script>
 
 
+
 <script id="xm-firebase-transaction-finish-sync">
 (function(){
 "use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var lastFinishedId="";
 
 function currentUser(){
   return localStorage.getItem("xm_demo_session") || "";
 }
 
-function clearTransactionLock(){
+function clearEverything(){
+  var u=currentUser();
+
   [
     "xm_active_transaction_until",
     "xm_transaction_lock_until",
@@ -3901,27 +3913,56 @@ function clearTransactionLock(){
     try{sessionStorage.removeItem(k)}catch(e){}
   });
 
-  var u=currentUser();
   if(u){
     localStorage.removeItem("xm_tx_current_v2_"+u);
   }
 
-  /* 清除倒數顯示 */
-  var box=document.getElementById("xmPaymentCountdown");
-  if(box) box.textContent="00:00:00";
-
-  var title=document.getElementById("xmWaitTitle");
-  if(title) title.textContent="交易完成";
-
-  var status=document.getElementById("xmWaitStatus");
-  if(status) status.textContent="";
-
-  /* 如果舊程式有提供解鎖函式，一併呼叫 */
   try{
-    if(typeof window.xmAdminReleaseTransaction==="function"){
-      window.xmAdminReleaseTransaction();
+    if(typeof window.xmFinishTransactionUI==="function"){
+      window.xmFinishTransactionUI();
     }
   }catch(e){}
+
+  var box=document.getElementById("xmPaymentCountdown");
+  if(box) box.textContent="00:00:00";
+}
+
+async function fetchJson(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{
+    cache:"no-store"
+  });
+  if(!r.ok) throw new Error("Firebase "+r.status);
+  return await r.json();
+}
+
+async function findCurrentRemote(){
+  var u=currentUser();
+  if(!u) return null;
+
+  /* First use local current transaction id */
+  try{
+    var raw=localStorage.getItem("xm_tx_current_v2_"+u);
+    if(raw){
+      var c=JSON.parse(raw);
+      if(c && c.id){
+        var exact=await fetchJson("/requests/"+c.id);
+        if(exact) return exact;
+      }
+    }
+  }catch(e){}
+
+  /*
+    Fallback: find the newest request belonging to this player.
+    This fixes cases where another legacy script cleared/replaced local current.
+  */
+  var all=await fetchJson("/requests");
+  if(!all) return null;
+
+  var arr=Object.values(all)
+    .filter(function(r){return r && r.user===u})
+    .sort(function(a,b){return Number(b.createdAt||0)-Number(a.createdAt||0)});
+
+  return arr.length ? arr[0] : null;
 }
 
 async function checkRemoteFinished(){
@@ -3929,38 +3970,43 @@ async function checkRemoteFinished(){
   if(!u) return;
 
   try{
-    var currentRaw=localStorage.getItem("xm_tx_current_v2_"+u);
-    if(!currentRaw) return;
+    var remote=await findCurrentRemote();
+    if(!remote) return;
 
-    var current=JSON.parse(currentRaw);
-    if(!current || !current.id) return;
+    if(remote.status==="success" || remote.status==="failed"){
+      if(lastFinishedId!==remote.id){
+        lastFinishedId=remote.id;
+      }
 
-    var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
-    var res=await fetch(DB+"/requests/"+encodeURIComponent(current.id)+".json?ts="+Date.now(),{cache:"no-store"});
-    if(!res.ok) return;
+      clearEverything();
 
-    var remote=await res.json();
-    if(remote && (remote.status==="success" || remote.status==="failed")){
-      clearTransactionLock();
-
-      /* 交易紀錄頁如果正在開，讓原本程式重新渲染 */
-      window.dispatchEvent(new Event("hashchange"));
-
-      /* 完成後回首頁，避免卡在倒數頁 */
-      if(location.hash==="#payment-wait-modal" || location.hash==="#withdraw-waiting-modal"){
-        location.hash="";
+      /*
+        Remove waiting modal immediately.
+        User can start the next transaction without waiting for navigation.
+      */
+      if(location.hash==="#payment-wait-modal" ||
+         location.hash==="#withdraw-waiting-modal" ||
+         location.hash==="#transaction-pending-modal"){
+        history.replaceState(null,"",location.pathname+location.search);
+        window.dispatchEvent(new Event("hashchange"));
       }
     }
-  }catch(e){}
+  }catch(e){
+    console.error("transaction sync error",e);
+  }
 }
 
 window.addEventListener("focus",checkRemoteFinished);
 window.addEventListener("pageshow",checkRemoteFinished);
-setInterval(checkRemoteFinished,700);
+window.addEventListener("hashchange",checkRemoteFinished);
 
-window.xmClearTransactionLock=clearTransactionLock;
+setInterval(checkRemoteFinished,500);
+setTimeout(checkRemoteFinished,200);
+
+window.xmCheckRemoteTransactionFinished=checkRemoteFinished;
 })();
 </script>
+
 
 </body>
 </html>
