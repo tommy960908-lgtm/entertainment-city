@@ -3336,6 +3336,9 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
 
 
+
+
+
 <script id="xm-category-scrollspy-script">
 (function(){
   "use strict";
@@ -3344,46 +3347,48 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   var electronic = document.getElementById("ELECTRONIC");
   var sport = document.getElementById("SPORT");
   var table = document.getElementById("TABLE");
+
   if(!nav || !electronic || !sport || !table) return;
+
+  var manualLock = false;
+  var manualTarget = "";
+  var unlockTimer = null;
 
   function activate(id){
     nav.querySelectorAll(".cat[data-section]").forEach(function(a){
-      a.classList.toggle("active", a.getAttribute("data-section") === id);
+      a.classList.toggle(
+        "active",
+        a.getAttribute("data-section") === id
+      );
     });
   }
 
   function detect(){
+    if(manualLock) return;
     if(location.hash && location.hash.indexOf("-modal") !== -1) return;
 
-    /*
-      直接看頁面上的「體育 / 百家樂」標題。
-      標題一進入螢幕可視範圍，就立刻切換上方黃色分類。
-    */
-    var sportTitle = sport.querySelector(".section-head") || sport;
-    var tableTitle = table.querySelector(".section-head") || table;
+    var sr = (sport.querySelector(".section-head") || sport).getBoundingClientRect();
+    var tr = (table.querySelector(".section-head") || table).getBoundingClientRect();
 
-    var sr = sportTitle.getBoundingClientRect();
-    var tr = tableTitle.getBoundingClientRect();
-
-    // 百家樂標題已經出現在畫面內或越過畫面頂端
+    // 百家樂標題進入畫面
     if(tr.top <= window.innerHeight && tr.bottom >= 0){
       activate("TABLE");
       return;
     }
 
-    // 已經捲過百家樂標題，也維持百家樂
+    // 已經越過百家樂
     if(tr.top < 0){
       activate("TABLE");
       return;
     }
 
-    // 體育兩個字一出現在畫面，就切成體育黃色
+    // 體育標題進入畫面
     if(sr.top <= window.innerHeight && sr.bottom >= 0){
       activate("SPORT");
       return;
     }
 
-    // 已捲過體育、但還沒到百家樂，維持體育
+    // 已越過體育、還沒到百家樂
     if(sr.top < 0 && tr.top > 0){
       activate("SPORT");
       return;
@@ -3396,10 +3401,28 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   function schedule(){
     if(ticking) return;
     ticking = true;
+
     requestAnimationFrame(function(){
       detect();
       ticking = false;
     });
+  }
+
+  function lockTo(id){
+    manualLock = true;
+    manualTarget = id;
+    activate(id);
+
+    if(unlockTimer){
+      clearTimeout(unlockTimer);
+    }
+
+    // Safari smooth scroll 通常幾百毫秒內完成，給足時間避免途中被搶色。
+    unlockTimer = setTimeout(function(){
+      manualLock = false;
+      manualTarget = "";
+      detect();
+    }, 900);
   }
 
   nav.addEventListener("click", function(e){
@@ -3411,18 +3434,47 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     if(!target) return;
 
     e.preventDefault();
-    activate(id);
+
+    lockTo(id);
 
     var top = target.getBoundingClientRect().top +
               (window.pageYOffset || 0) -
-              (nav.getBoundingClientRect().height || 0) - 12;
+              (nav.getBoundingClientRect().height || 0) -
+              12;
 
-    window.scrollTo({top:Math.max(0,top), behavior:"smooth"});
+    window.scrollTo({
+      top: Math.max(0, top),
+      behavior: "smooth"
+    });
   });
+
+  // 使用者自己手動滑動時，立即解除手動鎖定，恢復自動偵測。
+  window.addEventListener("touchstart", function(){
+    if(manualLock){
+      manualLock = false;
+      manualTarget = "";
+      if(unlockTimer){
+        clearTimeout(unlockTimer);
+        unlockTimer = null;
+      }
+    }
+  }, {passive:true});
+
+  window.addEventListener("wheel", function(){
+    if(manualLock){
+      manualLock = false;
+      manualTarget = "";
+      if(unlockTimer){
+        clearTimeout(unlockTimer);
+        unlockTimer = null;
+      }
+    }
+  }, {passive:true});
 
   window.addEventListener("scroll", schedule, {passive:true});
   window.addEventListener("resize", schedule);
   window.addEventListener("load", schedule);
+
   schedule();
 })();
 </script>
