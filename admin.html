@@ -645,5 +645,87 @@ setTimeout(showNextNotice,300);
 })();
 </script>
 
+
+<script id="xm-firebase-cross-device-admin">
+(function(){
+"use strict";
+const DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+let lastPending=new Set(), noticeId="";
+
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+async function get(path){const r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw new Error("GET "+r.status);return await r.json()}
+async function put(path,v){const r=await fetch(DB+path+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)});if(!r.ok)throw new Error("PUT "+r.status);return await r.json()}
+async function patch(path,v){const r=await fetch(DB+path+".json",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)});if(!r.ok)throw new Error("PATCH "+r.status);return await r.json()}
+function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function dt(v){return v?new Date(Number(v)).toLocaleString("zh-TW",{hour12:false}):"-"}
+
+async function requests(){
+  const o=await get("/requests");
+  return o?Object.values(o).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)):[];
+}
+function showNotice(r){
+  if(!r||noticeId)return;
+  noticeId=r.id;
+  const info=document.getElementById("xmRequestNoticeInfo");
+  if(info) info.innerHTML='玩家 ID：<b>'+r.user+'</b><br>申請類型：<b>'+(r.type==="withdraw"?"提款":"存款")+'</b><br>申請金額：<b>'+money(r.amount)+'</b>';
+  document.getElementById("xmRequestNotice")?.classList.add("show");
+}
+function hideNotice(){
+  document.getElementById("xmRequestNotice")?.classList.remove("show");
+  noticeId="";
+}
+async function renderRemote(){
+  const rs=await requests();
+  const pending=rs.filter(r=>r.status==="pending");
+  const body=document.getElementById("txBody");
+  if(body){
+    body.innerHTML=rs.length?rs.map(r=>'<tr><td><b>'+r.user+'</b></td><td>'+(r.type==="withdraw"?"提款":"存款")+'</td><td class="money">'+money(r.amount)+'</td><td>'+(r.status==="pending"?'<span class="badge red">待審核</span>':r.status==="success"?'<span class="badge green">交易成功</span>':'<span class="badge red">交易失敗</span>')+'</td><td>'+dt(r.createdAt)+'</td><td>'+(r.status==="pending"?'<div class="row-actions"><button class="ok mini" type="button" onclick="xmFirebaseApprove(\''+r.id+'\')">接受</button><button class="danger mini" type="button" onclick="xmFirebaseReject(\''+r.id+'\')">拒絕</button></div>':'—')+'</td></tr>').join(""):'<tr><td colspan="6" class="empty">目前沒有交易申請</td></tr>';
+  }
+  const stat=document.getElementById("statPending"); if(stat)stat.textContent=pending.length;
+  const current=new Set(pending.map(r=>r.id));
+  const fresh=pending.find(r=>!lastPending.has(r.id));
+  if(fresh) showNotice(fresh);
+  lastPending=current;
+}
+
+async function finish(id,accept){
+  const r=await get("/requests/"+id);
+  if(!r||r.status!=="pending"){hideNotice();return}
+  const pk=safeKey(r.user);
+  let player=await get("/players/"+pk);
+  if(!player) player={id:r.user,balance:0,createdAt:Date.now()};
+  const amount=Math.max(0,Number(r.amount||0));
+  let applied=0;
+  if(accept){
+    if(r.type==="deposit"){player.balance=Number(player.balance||0)+amount;applied=amount}
+    else {
+      const bal=Number(player.balance||0);
+      if(amount>bal){alert("玩家目前餘額不足，無法接受這筆提款");return}
+      player.balance=bal-amount;applied=amount;
+    }
+    await put("/players/"+pk,player);
+    r.status="success";
+  } else {
+    r.status="failed";
+  }
+  r.finishedAt=Date.now(); r.appliedAmount=applied;
+  await put("/requests/"+id,r);
+  await put("/history/"+pk+"/"+id,r);
+  hideNotice();
+  await renderRemote();
+}
+
+window.xmFirebaseApprove=id=>finish(id,true).catch(e=>{console.error(e);alert("接受失敗，請重新再試")});
+window.xmFirebaseReject=id=>finish(id,false).catch(e=>{console.error(e);alert("拒絕失敗，請重新再試")});
+window.xmApproveCurrentRequest=function(){if(noticeId)window.xmFirebaseApprove(noticeId);return false};
+window.xmRejectCurrentRequest=function(){if(noticeId)window.xmFirebaseReject(noticeId);return false};
+window.xmApproveRequestById=function(id){window.xmFirebaseApprove(id);return false};
+window.xmRejectRequestById=function(id){window.xmFirebaseReject(id);return false};
+
+setInterval(()=>renderRemote().catch(()=>{}),900);
+setTimeout(()=>renderRemote().catch(console.error),300);
+})();
+</script>
+
 </body>
 </html>
