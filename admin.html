@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>XM娛樂城｜後台管理</title>
+<style>
+:root{--gold:#e2b94f;--line:#392c18;--panel:#100f0c;--muted:#918a7e}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#050505;color:#f3f0e8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif}
+button,input{font:inherit}
+button,a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.hidden{display:none!important}
+.login{min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 50% 0,#241704,#050505 45%)}
+.login-card{width:min(420px,100%);padding:24px;background:#0e0d0b;border:1px solid var(--line);border-radius:18px}
+.brand{font-size:28px;font-weight:1000;color:var(--gold)}.brand small{display:block;font-size:10px;letter-spacing:3px;color:#ddd}
+.field{margin:15px 0}.field label{display:block;font-size:13px;color:#bbb2a2;margin-bottom:7px}.field input{width:100%;padding:12px;border:1px solid #413521;border-radius:10px;background:#080808;color:white}
+.primary,.ghost,.danger,.ok{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:10px 13px;font-weight:850;text-decoration:none;cursor:pointer;pointer-events:auto!important;position:relative;z-index:2}
+.primary{border:0;background:linear-gradient(#f0d071,#c99a2d);color:#171008}.ghost{border:1px solid #594421;background:#0b0a08;color:#e2c069}.danger{border:1px solid #703737;background:#180c0c;color:#e89898}.ok{border:1px solid #356041;background:#0d1710;color:#8bdc9e}
+.direct{width:100%;margin-top:4px}
+#admin-panel{display:none}
+#admin-panel:target{
+  display:block;
+  position:fixed;
+  inset:0;
+  z-index:80;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  background:#050505;
+}
+body.xm-admin-open{
+  overflow:hidden!important;
+  height:100vh!important;
+}
+body.xm-admin-open .login{
+  display:none!important;
+}
+.top{position:sticky;top:0;z-index:20;background:#070706f3;border-bottom:1px solid var(--line)}
+.topin{max-width:1180px;margin:auto;height:64px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.title{color:var(--gold);font-size:19px;font-weight:1000}.top-actions{display:flex;gap:7px}
+.wrap{max-width:1180px;margin:auto;padding:17px 14px 36px}
+.status{margin-bottom:12px;padding:9px 11px;border:1px solid #293723;border-radius:9px;color:#91d79b;background:#0b130d;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.stat,.panel{background:linear-gradient(#11100d,#090806);border:1px solid #302617;border-radius:14px}.stat{padding:14px}.stat small{color:var(--muted)}.stat strong{display:block;margin-top:4px;color:#efca67;font-size:23px}
+.tabs{display:flex;gap:8px;overflow:auto;margin:15px 0}.tab{white-space:nowrap;border:1px solid #47371e;background:#0c0b09;color:#aaa;border-radius:999px;padding:9px 14px;cursor:pointer}.tab.active{color:#efca67;background:#36260d}
+.panel{padding:14px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.panel h2{margin:0;font-size:18px}
+.table-wrap{overflow:auto;border:1px solid #251f16;border-radius:10px}table{width:100%;min-width:720px;border-collapse:collapse}th,td{padding:10px 11px;text-align:left;border-bottom:1px solid #211b14;font-size:13px}th{color:#d9b95d;background:#0b0a08}.money{color:#ecc966;font-weight:850}.actions{display:flex;gap:6px;flex-wrap:wrap}.mini{padding:6px 8px;font-size:12px}.empty{text-align:center;color:#756e64;padding:28px}
+.modal{position:fixed;inset:0;z-index:100;background:#000b;display:grid;place-items:center;padding:18px}.modal-card{width:min(460px,100%);padding:17px;background:#11100d;border:1px solid #49381e;border-radius:15px}.modal-head{display:flex;align-items:center;justify-content:space-between}.modal-head h3{margin:0}.x{border:0;background:none;color:#aaa;font-size:25px}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<section class="login">
+  <div class="login-card">
+    <div class="brand">XM娛樂城<small>ADMIN CONSOLE</small></div>
+    <h2 style="margin-top:25px">管理員登入</h2>
+    <div class="field"><label>管理員帳號</label><input value="admin" readonly></div>
+    <div class="field"><label>密碼</label><input value="xmadmin123" readonly></div>
+    <a class="primary direct" href="#admin-panel">登入後台</a>
+    <div style="color:#777;font-size:12px;margin-top:12px">目前為玩家端測試後台。</div>
+  </div>
+</section>
+
+<section id="admin-panel">
+  <header class="top">
+    <div class="topin">
+      <div class="title">XM娛樂城｜後台管理</div>
+      <div class="top-actions">
+        <button type="button" class="ghost" data-action="refresh">重新整理</button>
+        <a class="danger" href="#">登出</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="jsStatus" class="status">後台程式載入中…</div>
+
+    <div class="stats">
+      <div class="stat"><small>玩家帳號</small><strong id="statUsers">0</strong></div>
+      <div class="stat"><small>玩家總餘額</small><strong id="statBalance">0.00</strong></div>
+      <div class="stat"><small>待處理交易</small><strong id="statPending">0</strong></div>
+      <div class="stat"><small>可領返水</small><strong id="statRebate">0.00</strong></div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="players">玩家管理</button>
+      <button type="button" class="tab" data-tab="transactions">交易管理</button>
+      <button type="button" class="tab" data-tab="rebates">返水管理</button>
+    </div>
+
+    <section id="playersView" class="panel">
+      <div class="panel-head"><h2>玩家管理</h2><button type="button" class="ghost" data-action="create-user">新增玩家</button></div>
+      <div class="table-wrap"><table><thead><tr><th>帳號</th><th>餘額</th><th>返水</th><th>流水</th><th>操作</th></tr></thead><tbody id="playersBody"></tbody></table></div>
+    </section>
+
+    <section id="transactionsView" class="panel hidden">
+      <div class="panel-head"><h2>交易管理</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>玩家</th><th>類型</th><th>金額</th><th>狀態</th><th>時間</th><th>操作</th></tr></thead><tbody id="txBody"></tbody></table></div>
+    </section>
+
+    <section id="rebatesView" class="panel hidden">
+      <div class="panel-head"><h2>返水管理</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>玩家</th><th>餘額</th><th>可領返水</th><th>發放時間</th><th>操作</th></tr></thead><tbody id="rebateBody"></tbody></table></div>
+    </section>
+  </main>
+</section>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button type="button" class="x" data-action="close-modal">×</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var byId=function(id){return document.getElementById(id)};
+function getUsers(){try{return JSON.parse(localStorage.getItem("xm_demo_users")||"{}")}catch(e){return {}}}
+function saveUsers(v){localStorage.setItem("xm_demo_users",JSON.stringify(v))}
+function readJson(k,f){try{var raw=localStorage.getItem(k);if(!raw)return f;var v=JSON.parse(raw);return v==null?f:v}catch(e){return f}}
+function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
+function dateText(ts){if(!ts)return "-";return new Date(Number(ts)).toLocaleString("zh-TW",{hour12:false})}
+function currentKey(u){return "xm_tx_current_v2_"+u}
+function historyKey(u){return "xm_tx_history_v2_"+u}
+function rebateKey(u){return "xm_rebate_balance_"+u}
+function rebateTimeKey(u){return "xm_rebate_issued_at_"+u}
+function turnoverKey(u){return "xm_rebate_turnover_"+u}
+function clearLocks(){["xm_active_transaction_until","xm_transaction_lock_until","xm_payment_wait_deadline_v2","xm_payment_wait_deadline","xm_active_transaction_type","xm_transaction_type"].forEach(function(k){localStorage.removeItem(k)})}
+function allTx(){
+  var out=[],us=getUsers();
+  Object.keys(us).forEach(function(u){
+    var c=readJson(currentKey(u),null);
+    if(c)out.push(Object.assign({user:u,current:true},c));
+    readJson(historyKey(u),[]).forEach(function(x){out.push(Object.assign({user:u,current:false},x))});
+  });
+  return out.sort(function(a,b){return Number(b.createdAt||b.finishedAt||0)-Number(a.createdAt||a.finishedAt||0)});
+}
+function openModal(title,html){byId("modalTitle").textContent=title;byId("modalBody").innerHTML=html;byId("modal").classList.remove("hidden")}
+function closeModal(){byId("modal").classList.add("hidden")}
+function render(){
+  var us=getUsers(),names=Object.keys(us),total=0,reb=0;
+  names.forEach(function(u){total+=Number(us[u].balance||0);reb+=Number(localStorage.getItem(rebateKey(u))||0)});
+  byId("statUsers").textContent=names.length;
+  byId("statBalance").textContent=money(total);
+  var tx=allTx();
+  byId("statPending").textContent=tx.filter(function(x){return x.current&&x.status==="pending"}).length;
+  byId("statRebate").textContent=money(reb);
+
+  byId("playersBody").innerHTML=names.length?names.map(function(u){
+    return '<tr><td><b>'+esc(u)+'</b></td><td class="money">'+money(us[u].balance)+'</td><td>'+money(localStorage.getItem(rebateKey(u))||0)+'</td><td>'+money(localStorage.getItem(turnoverKey(u))||0)+'</td><td><div class="actions">'
+    +'<button type="button" class="ghost mini" data-action="adjust" data-user="'+encodeURIComponent(u)+'">加扣點</button>'
+    +'<button type="button" class="ghost mini" data-action="password" data-user="'+encodeURIComponent(u)+'">改密碼</button>'
+    +'<button type="button" class="danger mini" data-action="unlock" data-user="'+encodeURIComponent(u)+'">解除交易</button>'
+    +'</div></td></tr>';
+  }).join(""):'<tr><td colspan="5" class="empty">沒有玩家帳號</td></tr>';
+
+  byId("txBody").innerHTML=tx.length?tx.map(function(x){
+    return '<tr><td>'+esc(x.user)+'</td><td>'+(x.type==="withdraw"?"提款":"存款")+'</td><td class="money">'+money(x.amount)+'</td><td>'+esc(x.status||"pending")+'</td><td>'+dateText(x.createdAt)+'</td><td>'
+    +(x.current?'<div class="actions"><button type="button" class="ok mini" data-action="tx-success" data-user="'+encodeURIComponent(x.user)+'">完成</button><button type="button" class="danger mini" data-action="tx-failed" data-user="'+encodeURIComponent(x.user)+'">失敗</button></div>':'—')+'</td></tr>';
+  }).join(""):'<tr><td colspan="6" class="empty">沒有交易紀錄</td></tr>';
+
+  byId("rebateBody").innerHTML=names.length?names.map(function(u){
+    return '<tr><td>'+esc(u)+'</td><td class="money">'+money(us[u].balance)+'</td><td>'+money(localStorage.getItem(rebateKey(u))||0)+'</td><td>'+dateText(localStorage.getItem(rebateTimeKey(u)))+'</td><td><button type="button" class="ghost mini" data-action="rebate" data-user="'+encodeURIComponent(u)+'">發放返水</button></td></tr>';
+  }).join(""):'<tr><td colspan="5" class="empty">沒有玩家帳號</td></tr>';
+}
+function finishTx(u,status){
+  var c=readJson(currentKey(u),null);if(!c)return;
+  c.status=status;c.finishedAt=Date.now();
+  var h=readJson(historyKey(u),[]);h.unshift(c);
+  localStorage.setItem(historyKey(u),JSON.stringify(h));
+  localStorage.removeItem(currentKey(u));clearLocks();render();
+}
+function showTab(name,btn){
+  ["players","transactions","rebates"].forEach(function(v){byId(v+"View").classList.toggle("hidden",v!==name)});
+  Array.from(document.querySelectorAll(".tab")).forEach(function(x){x.classList.remove("active")});
+  if(btn)btn.classList.add("active");
+}
+
+document.addEventListener("click",function(e){
+  var tab=e.target.closest("[data-tab]");
+  if(tab){showTab(tab.getAttribute("data-tab"),tab);return}
+
+  var b=e.target.closest("[data-action]");
+  if(!b)return;
+  var action=b.getAttribute("data-action");
+  var u=decodeURIComponent(b.getAttribute("data-user")||"");
+
+  if(action==="refresh"){render();return}
+  if(action==="close-modal"){closeModal();return}
+  if(action==="create-user"){
+    openModal("新增玩家",'<div class="field"><label>帳號</label><input id="mUser"></div><div class="field"><label>密碼</label><input id="mPass"></div><div class="field"><label>初始餘額</label><input id="mAmount" type="number" value="0"></div><button type="button" class="primary" data-action="create-user-save">建立帳號</button>');return
+  }
+  if(action==="create-user-save"){
+    var un=(byId("mUser").value||"").trim(),pw=byId("mPass").value||"",bal=Math.max(0,Number(byId("mAmount").value)||0),us=getUsers();
+    if(!un||!pw||us[un])return;
+    us[un]={password:pw,balance:bal};saveUsers(us);closeModal();render();return
+  }
+  if(action==="adjust"){
+    openModal("加扣點｜"+u,'<div class="field"><label>正數加點，負數扣點</label><input id="mAmount" type="number"></div><button type="button" class="primary" data-action="adjust-save" data-user="'+encodeURIComponent(u)+'">確認</button>');return
+  }
+  if(action==="adjust-save"){
+    var val=Number(byId("mAmount").value),us2=getUsers();if(!Number.isFinite(val)||!us2[u])return;
+    us2[u].balance=Math.max(0,Number(us2[u].balance||0)+val);saveUsers(us2);closeModal();render();return
+  }
+  if(action==="password"){
+    openModal("改密碼｜"+u,'<div class="field"><label>新密碼</label><input id="mPass"></div><button type="button" class="primary" data-action="password-save" data-user="'+encodeURIComponent(u)+'">確認</button>');return
+  }
+  if(action==="password-save"){
+    var np=byId("mPass").value||"",us3=getUsers();if(!np||!us3[u])return;
+    us3[u].password=np;saveUsers(us3);closeModal();render();return
+  }
+  if(action==="unlock"){localStorage.removeItem(currentKey(u));clearLocks();render();return}
+  if(action==="tx-success"){finishTx(u,"success");return}
+  if(action==="tx-failed"){finishTx(u,"failed");return}
+  if(action==="rebate"){
+    openModal("發放返水｜"+u,'<div class="field"><label>返水金額</label><input id="mAmount" type="number" min="0"></div><button type="button" class="primary" data-action="rebate-save" data-user="'+encodeURIComponent(u)+'">確認發放</button>');return
+  }
+  if(action==="rebate-save"){
+    var amt=Math.max(0,Number(byId("mAmount").value)||0);
+    localStorage.setItem(rebateKey(u),String(amt));
+    if(amt>0)localStorage.setItem(rebateTimeKey(u),String(Date.now()));else localStorage.removeItem(rebateTimeKey(u));
+    closeModal();render();return
+  }
+});
+
+byId("modal").addEventListener("click",function(e){if(e.target===this)closeModal()});
+byId("jsStatus").textContent="後台程式：已載入，可操作";
+
+function syncAdminHash(){
+  var open = location.hash === "#admin-panel";
+  document.body.classList.toggle("xm-admin-open", open);
+  var login = document.querySelector(".login");
+  if(login) login.style.display = open ? "none" : "";
+  if(open){
+    setTimeout(function(){
+      var panel=document.getElementById("admin-panel");
+      if(panel) panel.scrollTop=0;
+    },0);
+  }
+}
+window.addEventListener("hashchange",syncAdminHash);
+syncAdminHash();
+
+render();
+})();
+</script>
+
+<script id="xm-admin-approval-bridge">
+(function(){
+"use strict";
+
+function byId(id){return document.getElementById(id)}
+function getUsers(){try{return JSON.parse(localStorage.getItem("xm_demo_users")||"{}")}catch(e){return {}}}
+function saveUsers(v){localStorage.setItem("xm_demo_users",JSON.stringify(v))}
+function getRequests(){try{var a=JSON.parse(localStorage.getItem("xm_admin_requests_v1")||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function saveRequests(a){localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a))}
+function readJson(k,f){try{var v=JSON.parse(localStorage.getItem(k)||"");return v==null?f:v}catch(e){return f}}
+function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function dateText(ts){if(!ts)return "-";return new Date(Number(ts)).toLocaleString("zh-TW",{hour12:false})}
+function historyKey(u){return "xm_tx_history_v2_"+u}
+function currentKey(u){return "xm_tx_current_v2_"+u}
+function rebateKey(u){return "xm_rebate_balance_"+u}
+function rebateTimeKey(u){return "xm_rebate_issued_at_"+u}
+function turnoverKey(u){return "xm_rebate_turnover_"+u}
+
+function clearLocks(){
+  ["xm_active_transaction_until","xm_transaction_lock_until","xm_payment_wait_deadline_v2","xm_payment_wait_deadline","xm_active_transaction_type","xm_transaction_type"].forEach(function(k){localStorage.removeItem(k)});
+}
+
+function renderRequests(){
+  var body=byId("txBody");
+  if(!body)return;
+
+  var reqs=getRequests().sort(function(x,y){return Number(y.createdAt||0)-Number(x.createdAt||0)});
+  body.innerHTML=reqs.length?reqs.map(function(r){
+    var pending=r.status==="pending";
+    var label=r.type==="withdraw"?"提款":"存款";
+    return '<tr>'+
+      '<td><b>'+String(r.user||"")+'</b></td>'+
+      '<td>'+label+'</td>'+
+      '<td class="money">'+money(r.amount)+'</td>'+
+      '<td>'+(pending?'<span class="badge red">待審核</span>':(r.status==="success"?'<span class="badge green">已接受</span>':'<span class="badge red">已拒絕</span>'))+'</td>'+
+      '<td>'+dateText(r.createdAt)+'</td>'+
+      '<td>'+(pending?'<div class="row-actions"><button class="ok mini xm-approve-btn" data-id="'+r.id+'">接受</button><button class="danger mini xm-reject-btn" data-id="'+r.id+'">拒絕</button></div>':'—')+'</td>'+
+    '</tr>';
+  }).join(""):'<tr><td colspan="6" class="empty">目前沒有交易申請</td></tr>';
+
+  var pendingCount=reqs.filter(function(r){return r.status==="pending"}).length;
+  var stat=byId("statPending"); if(stat)stat.textContent=pendingCount;
+}
+
+function completeRequest(id,accept){
+  var reqs=getRequests();
+  var idx=reqs.findIndex(function(r){return r.id===id});
+  if(idx<0)return;
+
+  var r=reqs[idx];
+  if(r.status!=="pending")return;
+
+  var us=getUsers();
+  if(!us[r.user]){alert("找不到玩家帳號："+r.user);return}
+
+  var amount=Math.max(0,Number(r.amount)||0);
+  var applied=0;
+
+  if(accept){
+    if(r.type==="deposit"){
+      us[r.user].balance=Number(us[r.user].balance||0)+amount;
+      applied=amount;
+    }else{
+      var bal=Number(us[r.user].balance||0);
+      if(amount>bal){alert("玩家目前餘額不足，無法接受這筆提款");return}
+      us[r.user].balance=bal-amount;
+      applied=amount;
+    }
+    saveUsers(us);
+    r.status="success";
+  }else{
+    r.status="failed";
+    applied=0;
+  }
+
+  r.finishedAt=Date.now();
+  r.appliedAmount=applied;
+
+  var hist=readJson(historyKey(r.user),[]);
+  hist.unshift({
+    id:r.id,
+    type:r.type,
+    amount:r.amount,
+    appliedAmount:applied,
+    createdAt:r.createdAt,
+    finishedAt:r.finishedAt,
+    status:r.status
+  });
+  localStorage.setItem(historyKey(r.user),JSON.stringify(hist));
+
+  localStorage.removeItem(currentKey(r.user));
+  clearLocks();
+
+  reqs[idx]=r;
+  saveRequests(reqs);
+
+  if(typeof window.xmAdminRender==="function")window.xmAdminRender();
+  renderRequests();
+}
+
+document.addEventListener("click",function(e){
+  var a=e.target.closest(".xm-approve-btn");
+  if(a){completeRequest(a.getAttribute("data-id"),true);return}
+  var r=e.target.closest(".xm-reject-btn");
+  if(r){completeRequest(r.getAttribute("data-id"),false);return}
+});
+
+var rb=byId("rebateIssueBtn");
+if(rb){
+  rb.addEventListener("click",function(){
+    var u=(byId("rebatePlayerId").value||"").trim();
+    var amount=Math.max(0,Number(byId("rebateAmountInput").value)||0);
+    var us=getUsers();
+    if(!u||!us[u]){alert("找不到這個玩家ID");return}
+    localStorage.setItem(rebateKey(u),String(amount));
+    if(amount>0)localStorage.setItem(rebateTimeKey(u),String(Date.now()));
+    else localStorage.removeItem(rebateTimeKey(u));
+    byId("rebatePlayerId").value="";
+    byId("rebateAmountInput").value="";
+    if(typeof window.xmAdminRender==="function")window.xmAdminRender();
+    alert("返水已發放給 "+u+"："+money(amount));
+  });
+}
+
+var oldRender=window.xmAdminRender;
+window.xmAdminRender=function(){
+  if(typeof oldRender==="function")oldRender();
+  renderRequests();
+};
+
+window.addEventListener("storage",function(e){
+  if(e.key==="xm_admin_requests_v1"||e.key==="xm_demo_users"){
+    if(typeof window.xmAdminRender==="function")window.xmAdminRender();
+  }
+});
+
+setInterval(renderRequests,1000);
+renderRequests();
+})();
+</script>
+
+</body>
+</html>
