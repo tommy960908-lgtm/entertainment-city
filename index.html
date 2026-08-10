@@ -1824,8 +1824,8 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     var tx={id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),user:u,type:type,amount:Number(amount),createdAt:Date.now(),deadline:deadline,status:"pending"};
     var a=requests(); a.unshift(tx); saveRequests(a);
     localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
-    localStorage.setItem("xm_active_transaction_until",String(deadline));
-    localStorage.setItem("xm_active_transaction_type",type);
+    /* 提款不建立全域 lock */
+    /* 提款不建立全域 type lock */
     localStorage.setItem("xm_admin_request_ping",String(Date.now()));
     return true;
   }
@@ -4156,49 +4156,7 @@ window.xmStartPaymentWaitCountdown=start;
 </script>
 
 
-<script id="xm-withdraw-wait-bypass-fix">
-(function(){
-"use strict";
 
-/*
-  提款送出後的這一次跳轉是同一筆交易流程的一部分，
-  不能被「上一筆交易尚未完成」攔截。
-*/
-window.addEventListener("hashchange",function(){
-  if(location.hash==="#withdraw-waiting-modal"){
-    var bypass=sessionStorage.getItem("xm_withdraw_submit_bypass");
-    if(bypass==="1"){
-      sessionStorage.removeItem("xm_withdraw_submit_bypass");
-      return;
-    }
-  }
-},true);
-
-/*
-  提款等待頁不需要倒數。
-  保留交易鎖，直到後台接受或拒絕後才解除。
-*/
-function clearWithdrawCountdownUI(){
-  if(location.hash!=="#withdraw-waiting-modal") return;
-
-  var box=document.getElementById("xmPaymentCountdown");
-  if(box) box.style.display="none";
-
-  var title=document.getElementById("xmWaitTitle");
-  if(title) title.textContent="等待客服確認";
-
-  var status=document.getElementById("xmWaitStatus");
-  if(status) status.textContent="請等待後台審核";
-
-  var icon=document.getElementById("xmWaitIcon");
-  if(icon) icon.textContent="⏳";
-}
-
-window.addEventListener("hashchange",clearWithdrawCountdownUI);
-window.addEventListener("pageshow",clearWithdrawCountdownUI);
-setTimeout(clearWithdrawCountdownUI,100);
-})();
-</script>
 
 
 <script id="xm-withdraw-no-lock">
@@ -4220,43 +4178,261 @@ setTimeout(clearWithdrawCountdownUI,100);
 </script>
 
 
-<script id="xm-withdraw-type-specific-pending">
+
+
+
+
+
+
+
+
+
+<script id="xm-withdraw-authoritative-flow">
 (function(){
 "use strict";
+
 var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-async function hasPendingWithdrawal(){
-  var u=localStorage.getItem("xm_demo_session")||"";
-  if(!u) return false;
-  try{
-    var r=await fetch(DB+"/requests.json?ts="+Date.now(),{cache:"no-store"});
-    if(!r.ok) return false;
-    var all=await r.json();
-    return !!(all && Object.values(all).some(function(x){
-      return x && x.user===u && x.type==="withdraw" && x.status==="pending";
-    }));
-  }catch(e){
-    return false;
-  }
+function currentUser(){
+  return localStorage.getItem("xm_demo_session") || "";
 }
 
-var original=window.xmSubmitWithdrawRequest;
-window.xmSubmitWithdrawRequest=async function(e){
-  if(e){
-    e.preventDefault();
-    e.stopPropagation();
+async function fetchJson(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("Firebase "+r.status);
+  return await r.json();
+}
+
+async function putJson(path,value){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(value)
+  });
+  if(!r.ok) throw new Error("Firebase "+r.status);
+  return await r.json();
+}
+
+async function getPendingWithdrawal(u){
+  var all=await fetchJson("/requests");
+  if(!all) return null;
+
+  var list=Object.values(all).filter(function(x){
+    return x &&
+           x.user===u &&
+           x.type==="withdraw" &&
+           x.status==="pending";
+  }).sort(function(a,b){
+    return Number(b.createdAt||0)-Number(a.createdAt||0);
+  });
+
+  return list.length ? list[0] : null;
+}
+
+function getAmount(){
+  var input=document.getElementById("xmWithdrawAmount");
+  var n=Number(input && input.value || 0);
+  if(n>0) return n;
+
+  var checked=document.querySelector('input[name="withdrawQuick"]:checked');
+  return Number(checked && checked.value || 0);
+}
+
+async function getPlayerBalance(u){
+  try{
+    var p=await fetchJson("/players/"+encodeURIComponent(u));
+    if(p && Number.isFinite(Number(p.balance))){
+      return Number(p.balance);
+    }
+  }catch(e){}
+
+  try{
+    var users=JSON.parse(localStorage.getItem("xm_demo_users")||"{}");
+    if(users[u]) return Number(users[u].balance||0);
+  }catch(e){}
+
+  return 0;
+}
+
+function clearWithdrawalLegacyLocks(){
+  /*
+    提款等待不使用全域 lock。
+    存款的 lock 不該在正常提款流程中存在；
+    但若 active type 明確是 deposit，就不碰它。
+  */
+  var activeType=localStorage.getItem("xm_active_transaction_type");
+
+  if(activeType==="deposit"){
+    return;
   }
 
-  if(await hasPendingWithdrawal()){
+  [
+    "xm_active_transaction_until",
+    "xm_transaction_lock_until",
+    "xm_payment_wait_deadline_v2",
+    "xm_payment_wait_deadline",
+    "xm_active_transaction_type",
+    "xm_transaction_type"
+  ].forEach(function(k){
+    localStorage.removeItem(k);
+    try{sessionStorage.removeItem(k)}catch(e){}
+  });
+}
+
+async function submitWithdrawal(){
+  var u=currentUser();
+  var status=document.getElementById("xmWithdrawStatus");
+
+  if(!u){
+    location.hash="login-required-modal";
+    return false;
+  }
+
+  var amount=getAmount();
+  if(!(amount>0)){
+    if(status) status.textContent="請輸入或選擇提款金額";
+    return false;
+  }
+
+  /*
+    先查 Firebase。
+    只有「確認按鈕被按下以前」就真的有另一筆 pending 提款，
+    才顯示上一筆尚未完成。
+  */
+  var existing=await getPendingWithdrawal(u);
+
+  if(existing){
+    if(status) status.textContent="";
     location.hash="transaction-pending-modal";
     return false;
   }
 
-  if(typeof original==="function"){
-    return original(e);
+  var balance=await getPlayerBalance(u);
+  if(amount>balance){
+    if(status) status.textContent="";
+    location.hash="withdraw-insufficient-modal";
+    return false;
   }
+
+  /*
+    沒有上一筆 pending -> 現在建立「這一筆」提款。
+    建立完成後不能再拿它當成上一筆阻擋自己。
+  */
+  var id="tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);
+  var tx={
+    id:id,
+    user:u,
+    type:"withdraw",
+    amount:amount,
+    createdAt:Date.now(),
+    status:"pending"
+  };
+
+  await putJson("/requests/"+id,tx);
+  localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
+
+  clearWithdrawalLegacyLocks();
+
+  if(status) status.textContent="";
+
+  /* 這一步一定直接進等待客服確認 */
+  location.hash="withdraw-waiting-modal";
   return false;
-};
+}
+
+function bindConfirm(){
+  var btn=document.getElementById("xmWithdrawConfirm");
+  if(!btn) return;
+
+  /*
+    Clone 按鈕，直接把舊版本掛在這顆按鈕上的 click handler 全部拔掉。
+    然後只綁這一套提款流程。
+  */
+  var fresh=btn.cloneNode(true);
+  btn.parentNode.replaceChild(fresh,btn);
+
+  fresh.type="button";
+  fresh.onclick=function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+    fresh.disabled=true;
+
+    submitWithdrawal()
+      .catch(function(err){
+        console.error("withdraw submit error",err);
+        var status=document.getElementById("xmWithdrawStatus");
+        if(status) status.textContent="提款送出失敗，請重新再試";
+      })
+      .finally(function(){
+        fresh.disabled=false;
+      });
+
+    return false;
+  };
+}
+
+/*
+  點「提款」入口時：
+  若上一筆真的 pending -> 顯示上一筆尚未完成。
+  若沒有 -> 正常進提款輸入頁。
+*/
+document.addEventListener("click",function(e){
+  var a=e.target.closest ? e.target.closest('a[href="#withdraw-modal"]') : null;
+  if(!a) return;
+
+  if(!currentUser()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    location.hash="login-required-modal";
+    return false;
+  }
+
+  e.preventDefault();
+  e.stopImmediatePropagation();
+
+  getPendingWithdrawal(currentUser())
+    .then(function(existing){
+      location.hash=existing ? "transaction-pending-modal" : "withdraw-modal";
+    })
+    .catch(function(){
+      location.hash="withdraw-modal";
+    });
+
+  return false;
+},true);
+
+function syncFinishedWithdrawal(){
+  var u=currentUser();
+  if(!u) return;
+
+  getPendingWithdrawal(u).then(function(pending){
+    /*
+      只要已沒有 pending 提款，就不應再停留在
+      「上一筆尚未完成」或提款等待頁。
+    */
+    if(!pending && location.hash==="#transaction-pending-modal"){
+      history.replaceState(null,"",location.pathname+location.search);
+      window.dispatchEvent(new Event("hashchange"));
+    }
+  }).catch(function(){});
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bindConfirm);
+}else{
+  bindConfirm();
+}
+
+window.addEventListener("pageshow",function(){
+  bindConfirm();
+  syncFinishedWithdrawal();
+});
+window.addEventListener("focus",syncFinishedWithdrawal);
+setInterval(syncFinishedWithdrawal,900);
+
+window.xmSubmitWithdrawalAuthoritative=submitWithdrawal;
 })();
 </script>
 
