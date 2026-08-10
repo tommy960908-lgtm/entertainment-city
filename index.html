@@ -1704,7 +1704,7 @@ function openGame(name){openSheet(name,'目前為首頁 Demo。之後可以把�
     <div class="money-note" style="margin-top:14px">
       此為虛擬點數，不會產生實際交易
     </div>
-    <a href="#payment-wait-modal" id="xmPaymentDone" class="auth-submit2" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:16px" onclick="xmStartCountdown()">確定</a>
+    <a href="#payment-wait-modal" id="xmPaymentDone" class="auth-submit2" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:16px" onclick="return xmSubmitDepositRequest(event)">確定</a>
   </div>
 </div>
 
@@ -1801,123 +1801,49 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   </div>
 </div>
 
+
 <script id="xm-withdraw-only">
 (function(){
   "use strict";
-
-  function readUsers(){
-    try {
-      return JSON.parse(localStorage.getItem("xm_demo_users") || "{}");
-    } catch(e) {
-      return {};
-    }
+  function readUsers(){try{return JSON.parse(localStorage.getItem("xm_demo_users")||"{}")}catch(e){return {}}}
+  function user(){return localStorage.getItem("xm_demo_session")||""}
+  function balance(){var u=user(),us=readUsers();return u&&us[u]?Number(us[u].balance||0):0}
+  function fmt(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function requests(){try{var a=JSON.parse(localStorage.getItem("xm_admin_requests_v1")||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+  function saveRequests(a){localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a))}
+  function createRequest(type,amount){
+    var u=user(); if(!u)return false;
+    var deadline=Date.now()+60*60*1000;
+    var tx={id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),user:u,type:type,amount:Number(amount),createdAt:Date.now(),deadline:deadline,status:"pending"};
+    var a=requests(); a.unshift(tx); saveRequests(a);
+    localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
+    localStorage.setItem("xm_active_transaction_until",String(deadline));
+    localStorage.setItem("xm_active_transaction_type",type);
+    return true;
   }
-
-  function activeUser(){
-    return localStorage.getItem("xm_demo_session") || "";
+  function paint(){
+    var b=fmt(balance());
+    var x=document.getElementById("xmWithdrawBalance");if(x)x.textContent=b;
+    var top=document.getElementById("xmTopBalance");if(top)top.textContent=b;
+    document.querySelectorAll(".xmCurrentBalance").forEach(function(el){el.textContent=b});
   }
-
-  function getBalance(){
-    var user = activeUser();
-    var users = readUsers();
-
-    if(user && users[user] && Number.isFinite(Number(users[user].balance))){
-      return Number(users[user].balance);
-    }
-
-    var guest = localStorage.getItem("xm_guest_balance");
-    if(guest === null || guest === ""){
-      localStorage.setItem("xm_guest_balance", "10000");
-      return 10000;
-    }
-    return Number(guest) || 0;
-  }
-
-  function formatMoney(value){
-    return Number(value).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  }
-
-  function paintBalance(value){
-    var formatted = formatMoney(value);
-
-    var top = document.getElementById("xmTopBalance");
-    if(top) top.textContent = formatted;
-
-    var wd = document.getElementById("xmWithdrawBalance");
-    if(wd) wd.textContent = formatted;
-
-    document.querySelectorAll(".xmCurrentBalance").forEach(function(el){
-      el.textContent = formatted;
-    });
-  }
-
-  function saveBalance(value){
-    value = Math.round(Number(value) * 100) / 100;
-
-    var user = activeUser();
-    var users = readUsers();
-
-    if(user && users[user]){
-      users[user].balance = value;
-      localStorage.setItem("xm_demo_users", JSON.stringify(users));
-    } else {
-      localStorage.setItem("xm_guest_balance", String(value));
-    }
-
-    paintBalance(value);
-  }
-
-  function bindWithdrawal(){
-    var input = document.getElementById("xmWithdrawAmount");
-    var confirm = document.getElementById("xmWithdrawConfirm");
-    var status = document.getElementById("xmWithdrawStatus");
-
-    if(!input || !confirm) return;
-
-    document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(radio){
-      radio.onclick = function(){
-        input.value = this.value;
-      };
-    });
-
-    confirm.onclick = function(){
-      var amount = Number(input.value || 0);
-      var balance = getBalance();
-
-      if(!(amount > 0)){
-        if(status) status.textContent = "請輸入或選擇提款金額";
-        return;
-      }
-
-      if(amount > balance){
-        if(status) status.textContent = "";
-        location.hash = "withdraw-insufficient-modal";
-        return;
-      }
-
-      saveBalance(balance - amount);
-
-      if(status) status.textContent = "";
-      location.hash = "withdraw-waiting-modal";
+  function bind(){
+    var input=document.getElementById("xmWithdrawAmount"),btn=document.getElementById("xmWithdrawConfirm"),status=document.getElementById("xmWithdrawStatus");
+    if(!input||!btn)return;
+    document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){r.onclick=function(){input.value=this.value}});
+    btn.onclick=function(){
+      var amount=Number(input.value||0),b=balance();
+      if(!(amount>0)){if(status)status.textContent="請輸入或選擇提款金額";return}
+      if(amount>b){if(status)status.textContent="";location.hash="withdraw-insufficient-modal";return}
+      if(window.xmTransactionLocked&&window.xmTransactionLocked()){location.hash="transaction-pending-modal";return}
+      if(!createRequest("withdraw",amount))return;
+      if(status)status.textContent="";
+      location.hash="withdraw-waiting-modal";
     };
-
-    paintBalance(getBalance());
+    paint();
   }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", bindWithdrawal);
-  } else {
-    bindWithdrawal();
-  }
-
-  window.addEventListener("hashchange", function(){
-    if(location.hash === "#withdraw-modal"){
-      paintBalance(getBalance());
-    }
-  });
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
+  window.addEventListener("hashchange",function(){if(location.hash==="#withdraw-modal")paint()});
 })();
 </script>
 
@@ -2513,6 +2439,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
     if(Date.now() >= Number(current.deadline || 0)){
       current.status = "failed";
+      current.appliedAmount = 0;
       current.finishedAt = Date.now();
 
       var history = readHistory();
@@ -2545,8 +2472,10 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   function historyCardHtml(tx){
     var label = tx.type === "withdraw" ? "提款" : "存款";
     var sign = tx.type === "withdraw" ? "−" : "+";
-    var amountText = tx.amount > 0 ? sign + fmtMoney(tx.amount) : "—";
-    var status = tx.status === "failed" ? "交易失敗" : "已完成";
+    var success = tx.status === "success";
+    var applied = success ? Math.abs(Number(tx.appliedAmount!=null?tx.appliedAmount:tx.amount)||0) : 0;
+    var amountText = sign + fmtMoney(applied);
+    var status = success ? "交易成功" : "交易失敗";
 
     return ''+
       '<div class="xm-tx-card">'+
@@ -2555,7 +2484,7 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
           '<div class="xm-tx-amount">'+amountText+'</div>'+
         '</div>'+
         '<div class="xm-tx-meta">交易時間：'+fmtDate(tx.createdAt)+'</div>'+
-        '<div class="xm-tx-status '+(tx.status==="failed"?"failed":"")+'">'+status+'</div>'+
+        '<div class="xm-tx-status '+(!success?"failed":"")+'">'+status+'</div>'+
       '</div>';
   }
 
@@ -3651,6 +3580,38 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
   window.addEventListener("load", schedule);
 
   schedule();
+})();
+</script>
+
+
+<script id="xm-admin-request-player-bridge">
+(function(){
+  "use strict";
+  function user(){return localStorage.getItem("xm_demo_session")||""}
+  function requests(){try{var a=JSON.parse(localStorage.getItem("xm_admin_requests_v1")||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+  function saveRequests(a){localStorage.setItem("xm_admin_requests_v1",JSON.stringify(a))}
+  function depositAmount(){
+    var input=document.getElementById("xmDepositAmount");
+    var n=Number(input&&input.value||0);
+    if(n>0)return n;
+    var checked=document.querySelector('input[name="depositQuick"]:checked');
+    return Number(checked&&checked.value||0);
+  }
+  window.xmSubmitDepositRequest=function(e){
+    if(e){e.preventDefault();e.stopPropagation()}
+    var u=user(); if(!u){location.hash="login-required-modal";return false}
+    if(window.xmTransactionLocked&&window.xmTransactionLocked()){location.hash="transaction-pending-modal";return false}
+    var amount=depositAmount();
+    if(!(amount>0)){location.hash="deposit-modal";return false}
+    var deadline=Date.now()+60*60*1000;
+    var tx={id:"tx_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),user:u,type:"deposit",amount:amount,createdAt:Date.now(),deadline:deadline,status:"pending"};
+    var a=requests();a.unshift(tx);saveRequests(a);
+    localStorage.setItem("xm_tx_current_v2_"+u,JSON.stringify(tx));
+    localStorage.setItem("xm_active_transaction_until",String(deadline));
+    localStorage.setItem("xm_active_transaction_type","deposit");
+    location.hash="payment-wait-modal";
+    return false;
+  };
 })();
 </script>
 
