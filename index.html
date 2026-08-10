@@ -3333,66 +3333,69 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
 
 
 
+
+
+
 <script id="xm-category-scrollspy-script">
 (function(){
   "use strict";
 
   var nav = document.getElementById("xmCategoryNav");
-  if(!nav) return;
-
-  var ids = ["ELECTRONIC","SPORT","TABLE"];
-  var sections = ids.map(function(id){
-    return document.getElementById(id);
-  }).filter(Boolean);
+  var electronic = document.getElementById("ELECTRONIC");
+  var sport = document.getElementById("SPORT");
+  var table = document.getElementById("TABLE");
+  if(!nav || !electronic || !sport || !table) return;
 
   function activate(id){
-    nav.querySelectorAll(".cat[data-section]").forEach(function(link){
-      link.classList.toggle(
-        "active",
-        link.getAttribute("data-section") === id
-      );
+    nav.querySelectorAll(".cat[data-section]").forEach(function(a){
+      a.classList.toggle("active", a.getAttribute("data-section") === id);
     });
   }
 
   function detect(){
-    if(!sections.length) return;
-
-    // modal 頁面不改首頁分類狀態
     if(location.hash && location.hash.indexOf("-modal") !== -1) return;
 
-    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
-    var navHeight = nav.getBoundingClientRect().height || 0;
+    /*
+      直接看頁面上的「體育 / 百家樂」標題。
+      標題一進入螢幕可視範圍，就立刻切換上方黃色分類。
+    */
+    var sportTitle = sport.querySelector(".section-head") || sport;
+    var tableTitle = table.querySelector(".section-head") || table;
 
-    // 判斷線：分類列底下約 35px
-    var trigger = y + navHeight + 35;
+    var sr = sportTitle.getBoundingClientRect();
+    var tr = tableTitle.getBoundingClientRect();
 
-    // 預設電子
-    var current = sections[0].id;
-
-    for(var i=0;i<sections.length;i++){
-      var top = sections[i].getBoundingClientRect().top + y;
-
-      if(top <= trigger){
-        current = sections[i].id;
-      }else{
-        break;
-      }
+    // 百家樂標題已經出現在畫面內或越過畫面頂端
+    if(tr.top <= window.innerHeight && tr.bottom >= 0){
+      activate("TABLE");
+      return;
     }
 
-    // 頁面接近最底時，確保百家樂能亮
-    var doc = document.documentElement;
-    if(window.innerHeight + y >= doc.scrollHeight - 20){
-      current = "TABLE";
+    // 已經捲過百家樂標題，也維持百家樂
+    if(tr.top < 0){
+      activate("TABLE");
+      return;
     }
 
-    activate(current);
+    // 體育兩個字一出現在畫面，就切成體育黃色
+    if(sr.top <= window.innerHeight && sr.bottom >= 0){
+      activate("SPORT");
+      return;
+    }
+
+    // 已捲過體育、但還沒到百家樂，維持體育
+    if(sr.top < 0 && tr.top > 0){
+      activate("SPORT");
+      return;
+    }
+
+    activate("ELECTRONIC");
   }
 
   var ticking = false;
   function schedule(){
     if(ticking) return;
     ticking = true;
-
     requestAnimationFrame(function(){
       detect();
       ticking = false;
@@ -3410,21 +3413,16 @@ document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
     e.preventDefault();
     activate(id);
 
-    var y = window.pageYOffset || 0;
-    var top = target.getBoundingClientRect().top + y - (nav.getBoundingClientRect().height || 0) - 20;
+    var top = target.getBoundingClientRect().top +
+              (window.pageYOffset || 0) -
+              (nav.getBoundingClientRect().height || 0) - 12;
 
-    window.scrollTo({
-      top: Math.max(0, top),
-      behavior: "smooth"
-    });
-
-    setTimeout(detect, 550);
+    window.scrollTo({top:Math.max(0,top), behavior:"smooth"});
   });
 
   window.addEventListener("scroll", schedule, {passive:true});
   window.addEventListener("resize", schedule);
   window.addEventListener("load", schedule);
-
   schedule();
 })();
 </script>
