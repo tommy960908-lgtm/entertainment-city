@@ -571,6 +571,20 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   touch-action:manipulation;
 }
 
+
+/* ===== 結果顯示整理：只保留人物上方狀態格 ===== */
+.score-banner,
+.result-banner,
+.xm-final-score,
+.xm-final-winner{
+  display:none!important;
+}
+
+/* 人物上方狀態格保持單一顯示 */
+.status{
+  z-index:190!important;
+}
+
 </style>
 </head>
 <body>
@@ -647,9 +661,6 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 </div>
 <div class="score-banner" id="scoreBanner"></div>
 <div class="result-banner" id="resultBanner"></div>
-
-<div class="xm-final-score" id="xmFinalScore"></div>
-<div class="xm-final-winner" id="xmFinalWinner"></div>
 <div class="road-cover"></div>
 <div class="real-road" id="realRoad"></div>
 <div class="bottom-nav-cover"></div>
@@ -663,15 +674,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 </div>
 
-<div class="controls single"><button class="phase" id="phaseBtn" disabled>下注中 10</button></div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-
-
-
-(function(){
+<div class="controls single"><button class="phase" id="phaseBtn" di(function(){
 "use strict";
 
 /*
@@ -1132,27 +1135,9 @@ function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
 }
 function showResult(round){
   if(!round)return;
-
   var label=round.outcome==="banker"
     ?"莊贏"
     :(round.outcome==="player"?"閒贏":"和局");
-
-  var score=document.getElementById("scoreBanner");
-  var result=document.getElementById("resultBanner");
-
-  if(score){
-    score.textContent="閒 "+round.playerTotal+"  VS  "+round.bankerTotal+" 莊";
-    score.classList.add("show");
-    score.style.display="block";
-    score.style.opacity="1";
-  }
-
-  if(result){
-    result.textContent=label;
-    result.classList.add("show");
-    result.style.display="block";
-    result.style.opacity="1";
-  }
 
   setStatus(
     label+"｜閒 "+round.playerTotal+"：莊 "+round.bankerTotal,
@@ -1160,21 +1145,7 @@ function showResult(round){
   );
 }
 
-function hideResult(){
-  var score=document.getElementById("scoreBanner");
-  var result=document.getElementById("resultBanner");
-
-  if(score){
-    score.classList.remove("show");
-    score.style.display="none";
-    score.style.opacity="0";
-  }
-  if(result){
-    result.classList.remove("show");
-    result.style.display="none";
-    result.style.opacity="0";
-  }
-}
+function hideResult(){}
 
 function renderNow(){
   if(!table || !table.epoch || !table.seed){
@@ -1198,7 +1169,6 @@ function renderNow(){
     renderRoadForCurrentRound(tl.cycleIndex,0,false);
     setStatus("房間休息中 "+tl.closeRemain+" 秒",BOARD_CAPACITY);
     if($("phaseBtn"))$("phaseBtn").textContent="房間休息中 "+tl.closeRemain+" 秒";
-    renderIndependentResult(tl,null);
     lastVisualKey="closed|"+tl.cycleIndex+"|"+tl.closeRemain;
     return;
   }
@@ -1243,8 +1213,21 @@ function renderNow(){
     showResult(round);
     renderRoadForCurrentRound(tl.cycleIndex,tl.roundNo,true);
   }
+  /* 最終狀態文字：結果只存在 result 階段，下一局下注立刻消失 */
+  if(tl.phase==="betting"){
+    setStatus("下注中 "+tl.remain,tl.roundNo);
+  }else if(tl.phase==="dealing"){
+    setStatus("封盤・發牌中",tl.roundNo);
+  }else if(tl.phase==="result"){
+    var resultLabel=round.outcome==="banker"
+      ?"莊贏"
+      :(round.outcome==="player"?"閒贏":"和局");
+    setStatus(
+      resultLabel+"｜閒 "+round.playerTotal+"：莊 "+round.bankerTotal,
+      tl.roundNo
+    );
+  }
 
-  renderIndependentResult(tl,round);
   lastVisualKey=visualKey;
 }
 function selectChip(v){
@@ -1416,27 +1399,6 @@ async function settleFirebaseRound(round,cycleIndex){
   }
 }
 
-function renderIndependentResult(tl,round){
-  var score=document.getElementById("xmFinalScore");
-  var winner=document.getElementById("xmFinalWinner");
-  if(!score||!winner)return;
-
-  if(tl.phase==="result" && round){
-    var label=round.outcome==="banker"
-      ?"莊贏"
-      :(round.outcome==="player"?"閒贏":"和局");
-
-    score.textContent=
-      "閒 "+round.playerTotal+"　VS　"+round.bankerTotal+" 莊";
-    winner.textContent=label;
-
-    score.classList.add("show");
-    winner.classList.add("show");
-  }else{
-    score.classList.remove("show");
-    winner.classList.remove("show");
-  }
-}
 
 function bind(){
   document.addEventListener("click",function(e){
@@ -1594,6 +1556,13 @@ async function init(){
   setInterval(function(){
     syncWallet().catch(function(e){
       console.error("百家樂錢包同步失敗",e);
+      walletReady=false;
+    });
+  },1500);
+}
+init();
+
+})();ror("百家樂錢包同步失敗",e);
       walletReady=false;
     });
   },1500);
