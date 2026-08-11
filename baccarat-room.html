@@ -859,14 +859,10 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 #xmSideTextBankerPair{left:79.8%;top:49.2%}
 
 
-/* 舊版閒對／莊對／幸運6浮動黃色金額隱藏；
-   新版下注格內黃框＋金額照常顯示 */
+/* 只隱藏舊版附加投注浮動金額，不修改任何遊戲 JS */
 #bet-player-pair,
 #bet-banker-pair,
-#bet-lucky6,
-[data-bet-label="playerPair"],
-[data-bet-label="bankerPair"],
-[data-bet-label="lucky6"]{
+#bet-lucky6{
   display:none!important;
 }
 
@@ -972,7 +968,23 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="bottom-nav-cover"></div>
 <div class="road-summary" id="roadSummary">
   <div class="b">莊　0</div>
-  <div class="p">閒　0(function(){
+  <div class="p">閒　0</div>
+  <div class="t">和　0</div>
+  <div>總　0</div>
+</div>
+
+
+</div>
+
+
+<div class="controls single">
+  <button class="phase" id="phaseBtn" disabled>下注中</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
 "use strict";
 
 /*
@@ -1965,20 +1977,6 @@ async function init(){
   }).catch(function(e){
     console.error("百家樂錢包同步失敗",e);
     walletReady=false;
-    balance=0;
-    try{paintBets()}catch(err){}
-  });
-
-  setInterval(function(){
-    syncWallet().catch(function(e){
-      console.error("百家樂錢包同步失敗",e);
-      walletReady=false;
-    });
-  },1500);
-}
-init();
-
-})();
     balance=0;
     try{paintBets()}catch(err){}
   });
