@@ -585,6 +585,146 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   z-index:190!important;
 }
 
+
+/* ===== 主下注格：黃色外框 + 格內投注金額 ===== */
+.xm-main-bet-frame{
+  position:absolute;
+  z-index:168;
+  pointer-events:none;
+  display:none;
+  border:4px solid #ffd84a;
+  box-shadow:0 0 14px rgba(255,216,74,.95), inset 0 0 15px rgba(255,216,74,.16);
+  border-radius:10px;
+}
+.xm-main-bet-frame.show{display:block}
+#xmFramePlayer{left:1.9%;top:51.8%;width:32.5%;height:11.0%}
+#xmFrameTie{left:34.45%;top:51.8%;width:30.6%;height:11.0%}
+#xmFrameBanker{left:65.0%;top:51.8%;width:33.1%;height:11.0%}
+
+.xm-main-bet-label{
+  position:absolute;
+  z-index:169;
+  pointer-events:none;
+  display:none;
+  transform:translate(-50%,-50%);
+  color:#ffe269;
+  background:rgba(0,0,0,.80);
+  border:1px solid #ffd84a;
+  border-radius:12px;
+  padding:5px 10px;
+  font-size:clamp(11px,2vw,20px);
+  font-weight:950;
+  white-space:nowrap;
+  text-shadow:0 1px 3px #000;
+}
+.xm-main-bet-label.show{display:block}
+#xmLabelPlayer{left:18.15%;top:58.0%}
+#xmLabelTie{left:49.75%;top:58.0%}
+#xmLabelBanker{left:81.55%;top:58.0%}
+
+/* 籌碼選取只允許一顆亮 */
+.xm-chip-frame{
+  position:absolute;
+  z-index:170;
+  pointer-events:none;
+  display:none;
+  border:4px solid #ffd84a;
+  box-shadow:0 0 14px rgba(255,216,74,.95);
+  border-radius:50%;
+}
+.xm-chip-frame.show{display:block}
+#xmChip100{left:7.03%;top:63.87%;width:10.94%;height:7.10%}
+#xmChip500{left:21.97%;top:63.87%;width:10.94%;height:7.10%}
+#xmChip1000{left:36.82%;top:63.87%;width:10.94%;height:7.10%}
+#xmChip5000{left:51.95%;top:63.87%;width:10.94%;height:7.10%}
+#xmChip10000{left:66.80%;top:63.87%;width:10.94%;height:7.10%}
+#xmChipCustom{left:81.54%;top:63.87%;width:10.94%;height:7.10%}
+
+/* 人物上方狀態格是唯一結果顯示 */
+.score-banner,.result-banner,.xm-final-score,.xm-final-winner{
+  display:none!important;
+}
+.status{
+  z-index:195!important;
+}
+
+
+/* ===== 中央開牌結果 ===== */
+.xm-center-result{
+  position:absolute;
+  z-index:220;
+  left:50%;
+  top:53.5%;
+  transform:translate(-50%,-50%);
+  width:min(92%,680px);
+  display:none;
+  pointer-events:none;
+  text-align:center;
+}
+.xm-center-result.show{display:block}
+
+.xm-center-score{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  border:3px solid #e8bd55;
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 0 24px rgba(255,191,42,.5);
+  background:#111;
+}
+.xm-center-score .player-side{
+  background:linear-gradient(90deg,#075bc9,#0f70dc);
+  padding:12px 8px;
+  color:#fff;
+}
+.xm-center-score .vs{
+  background:#151515;
+  color:#ffd45b;
+  padding:12px 18px;
+  font-size:clamp(22px,5vw,44px);
+  font-weight:950;
+}
+.xm-center-score .banker-side{
+  background:linear-gradient(90deg,#b81717,#de2a2a);
+  padding:12px 8px;
+  color:#fff;
+}
+.xm-center-score strong{
+  display:block;
+  font-size:clamp(24px,5.5vw,48px);
+  line-height:1;
+}
+.xm-center-score span{
+  display:block;
+  margin-top:3px;
+  font-size:clamp(14px,2.8vw,24px);
+  font-weight:900;
+}
+
+.xm-center-winner{
+  display:inline-block;
+  margin-top:10px;
+  min-width:32%;
+  padding:8px 24px;
+  border-radius:12px;
+  border:2px solid #ffd66e;
+  background:linear-gradient(#b81717,#7c0000);
+  color:#fff;
+  font-size:clamp(22px,5vw,42px);
+  font-weight:950;
+  box-shadow:0 0 18px rgba(255,180,50,.35);
+}
+.xm-center-winner.player{
+  background:linear-gradient(#156bd1,#073f91);
+}
+.xm-center-winner.tie{
+  background:linear-gradient(#57aa2c,#276718);
+}
+
+/* 人物上方狀態框只顯示局數/下注/封盤，不拿來顯示勝負 */
+.status{z-index:190!important}
+
 </style>
 </head>
 <body>
@@ -642,6 +782,38 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="xm-highlight" id="hl-bet-playerPair"></div>
 <div class="xm-highlight" id="hl-bet-lucky6"></div>
 <div class="xm-highlight" id="hl-bet-bankerPair"></div>
+
+
+<div class="xm-main-bet-frame" id="xmFramePlayer"></div>
+<div class="xm-main-bet-frame" id="xmFrameTie"></div>
+<div class="xm-main-bet-frame" id="xmFrameBanker"></div>
+
+<div class="xm-main-bet-label" id="xmLabelPlayer"></div>
+<div class="xm-main-bet-label" id="xmLabelTie"></div>
+<div class="xm-main-bet-label" id="xmLabelBanker"></div>
+
+<div class="xm-chip-frame" id="xmChip100"></div>
+<div class="xm-chip-frame" id="xmChip500"></div>
+<div class="xm-chip-frame" id="xmChip1000"></div>
+<div class="xm-chip-frame" id="xmChip5000"></div>
+<div class="xm-chip-frame" id="xmChip10000"></div>
+<div class="xm-chip-frame" id="xmChipCustom"></div>
+
+
+<div class="xm-center-result" id="xmCenterResult">
+  <div class="xm-center-score">
+    <div class="player-side">
+      <strong id="xmCenterPlayerTotal">0</strong>
+      <span>閒</span>
+    </div>
+    <div class="vs">VS</div>
+    <div class="banker-side">
+      <strong id="xmCenterBankerTotal">0</strong>
+      <span>莊</span>
+    </div>
+  </div>
+  <div class="xm-center-winner" id="xmCenterWinner">莊贏</div>
+</div>
 
 <div class="status" id="status">第 1 局｜下注中 10</div>
   <div class="cards pc" id="pc"></div>
@@ -854,6 +1026,75 @@ function updatePlayerBetUI(){
   badge("xmBetMoneyPlayerPair",bets.playerPair);
   badge("xmBetMoneyLucky6",bets.lucky6);
   badge("xmBetMoneyBankerPair",bets.bankerPair);
+}
+
+
+function renderBetSelection(){
+  function toggle(id,on){
+    var el=document.getElementById(id);
+    if(el)el.classList.toggle("show",!!on);
+  }
+  function label(id,name,value){
+    var el=document.getElementById(id);
+    if(!el)return;
+    var n=Number(value||0);
+    if(n>0){
+      el.textContent=name+" "+n.toLocaleString("en-US",{
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      });
+      el.classList.add("show");
+    }else{
+      el.textContent="";
+      el.classList.remove("show");
+    }
+  }
+
+  /* 籌碼黃框永遠跟最後選到的面額走 */
+  toggle("xmChip100",Number(chip)===100);
+  toggle("xmChip500",Number(chip)===500);
+  toggle("xmChip1000",Number(chip)===1000);
+  toggle("xmChip5000",Number(chip)===5000);
+  toggle("xmChip10000",Number(chip)===10000);
+
+  var fixed=[100,500,1000,5000,10000];
+  toggle("xmChipCustom",Number(chip)>0 && fixed.indexOf(Number(chip))===-1);
+
+  /* 閒/和/莊有下注就亮整格，並顯示「名稱 金額」 */
+  toggle("xmFramePlayer",Number(bets.player||0)>0);
+  toggle("xmFrameTie",Number(bets.tie||0)>0);
+  toggle("xmFrameBanker",Number(bets.banker||0)>0);
+
+  label("xmLabelPlayer","閒",bets.player);
+  label("xmLabelTie","和",bets.tie);
+  label("xmLabelBanker","莊",bets.banker);
+}
+
+
+function renderCenterResult(tl,round){
+  var box=document.getElementById("xmCenterResult");
+  var p=document.getElementById("xmCenterPlayerTotal");
+  var b=document.getElementById("xmCenterBankerTotal");
+  var w=document.getElementById("xmCenterWinner");
+  if(!box||!p||!b||!w)return;
+
+  if(tl.phase==="result" && round){
+    p.textContent=round.playerTotal;
+    b.textContent=round.bankerTotal;
+
+    var label=round.outcome==="banker"
+      ?"莊贏"
+      :(round.outcome==="player"?"閒贏":"和局");
+
+    w.textContent=label;
+    w.className="xm-center-winner";
+    if(round.outcome==="player")w.classList.add("player");
+    if(round.outcome==="tie")w.classList.add("tie");
+
+    box.classList.add("show");
+  }else{
+    box.classList.remove("show");
+  }
 }
 
 function toast(msg){
@@ -1092,6 +1333,7 @@ function paintBets(){
   }
   refreshSelectionUI();
   updatePlayerBetUI();
+  renderBetSelection();
 }
 
 function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
@@ -1236,10 +1478,22 @@ function renderNow(){
     );
   }
 
+  /* 每個畫面更新都以目前 phase 決定唯一狀態文字 */
+  if(tl.phase==="betting"){
+    setStatus("下注中 "+tl.remain,tl.roundNo);
+  }else if(tl.phase==="dealing"){
+    setStatus("封盤・發牌中",tl.roundNo);
+  }else if(tl.phase==="result"){
+    setStatus("開牌結果",tl.roundNo);
+  }
+
+  renderBetSelection();
+  renderCenterResult(tl,round);
   lastVisualKey=visualKey;
 }
 function selectChip(v){
   var tl=getTimeline(Date.now());
+
   if(tl.phase!=="betting"){
     toast(tl.phase==="closed"?"房間休息中":"目前已封盤");
     return;
@@ -1249,9 +1503,8 @@ function selectChip(v){
   if(!(n>0))return;
 
   chip=n;
-  updatePlayerBetUI();
+  renderBetSelection();
 }
-
 
 function isPair(cards){
   return Array.isArray(cards) &&
@@ -1429,7 +1682,7 @@ function bind(){
       }
 
       var v=Number(prompt("請輸入自訂籌碼金額"));
-      if(v>0){chip=v; updatePlayerBetUI();refreshSelectionUI();}
+      if(v>0){chip=v;renderBetSelection();}
       return;
     }
 
@@ -1516,6 +1769,7 @@ async function init(){
   }
 
   bind();
+  renderBetSelection();
   updatePlayerBetUI();
 
   try{
