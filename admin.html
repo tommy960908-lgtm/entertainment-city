@@ -983,5 +983,210 @@ setTimeout(bind,300);
 })();
 </script>
 
+
+<script id="xm-firebase-player-admin-v2">
+(function(){
+"use strict";
+
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+function safeKey(s){
+  return encodeURIComponent(String(s)).replace(/\./g,"%2E");
+}
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function money(v){
+  return Number(v||0).toLocaleString("en-US",{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  });
+}
+async function fbGet(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok) throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function fbPut(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+  return await r.json();
+}
+async function fbPatch(path,v){
+  var r=await fetch(DB+path+".json",{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(v)
+  });
+  if(!r.ok) throw new Error("PATCH "+r.status);
+  return await r.json();
+}
+
+async function renderPlayers(){
+  try{
+    var obj=await fbGet("/players");
+    obj=obj||{};
+    var rows=Object.keys(obj).map(function(k){
+      var p=obj[k]||{};
+      return {
+        key:k,
+        id:String(p.id || decodeURIComponent(k)),
+        balance:Number(p.balance||0),
+        password:String(p.password||"")
+      };
+    }).sort(function(a,b){
+      return a.id.localeCompare(b.id,"zh-Hant");
+    });
+
+    var body=document.getElementById("playersBody");
+    if(body){
+      body.innerHTML=rows.length?rows.map(function(p){
+        return '<tr>'+
+          '<td><b>'+esc(p.id)+'</b></td>'+
+          '<td class="money">'+money(p.balance)+'</td>'+
+          '<td id="fbRebate_'+encodeURIComponent(p.id)+'">0.00</td>'+
+          '<td id="fbTurnover_'+encodeURIComponent(p.id)+'">0.00</td>'+
+          '<td><div class="actions">'+
+            '<button type="button" class="ghost mini xm-fb-password" data-user="'+encodeURIComponent(p.id)+'">改密碼</button>'+
+          '</div></td>'+
+        '</tr>';
+      }).join(""):'<tr><td colspan="5" class="empty">沒有玩家帳號</td></tr>';
+    }
+
+    var statUsers=document.getElementById("statUsers");
+    if(statUsers) statUsers.textContent=rows.length;
+
+    var total=rows.reduce(function(n,p){return n+p.balance},0);
+    var statBalance=document.getElementById("statBalance");
+    if(statBalance) statBalance.textContent=money(total);
+
+    /* 返水改讀 Firebase；流水若玩家資料內有 turnover 也一起顯示 */
+    var rebates=await fbGet("/rebates").catch(function(){return {}});
+    rebates=rebates||{};
+    var totalRebate=0;
+
+    rows.forEach(function(p){
+      var rb=rebates[safeKey(p.id)] || {};
+      var amount=Number(rb.amount||0);
+      totalRebate+=amount;
+      var rbEl=document.getElementById("fbRebate_"+encodeURIComponent(p.id));
+      if(rbEl) rbEl.textContent=money(amount);
+
+      var raw=obj[p.key]||{};
+      var turnover=Number(raw.turnover||raw.rebateTurnover||0);
+      var toEl=document.getElementById("fbTurnover_"+encodeURIComponent(p.id));
+      if(toEl) toEl.textContent=money(turnover);
+    });
+
+    var statRebate=document.getElementById("statRebate");
+    if(statRebate) statRebate.textContent=money(totalRebate);
+
+    var st=document.getElementById("jsStatus");
+    if(st) st.textContent="後台程式：Firebase 已連線，玩家資料跨裝置同步";
+  }catch(e){
+    console.error("Firebase 玩家讀取失敗",e);
+    var st=document.getElementById("jsStatus");
+    if(st) st.textContent="Firebase 玩家資料讀取失敗，請檢查網路或資料庫權限";
+  }
+}
+
+async function createPlayer(){
+  var un=(document.getElementById("mUser")?.value||"").trim();
+  var pw=document.getElementById("mPass")?.value||"";
+  var bal=Math.max(0,Number(document.getElementById("mAmount")?.value)||0);
+  if(!un||!pw){
+    alert("請輸入帳號及密碼");
+    return;
+  }
+  var key=safeKey(un);
+  var exists=await fbGet("/players/"+key);
+  if(exists){
+    alert("這個玩家帳號已存在");
+    return;
+  }
+  await fbPut("/players/"+key,{
+    id:un,
+    password:pw,
+    balance:bal,
+    createdAt:Date.now()
+  });
+  document.getElementById("modal")?.classList.add("hidden");
+  await renderPlayers();
+}
+
+async function changePassword(user){
+  var pw=document.getElementById("mPass")?.value||"";
+  if(!pw){
+    alert("請輸入新密碼");
+    return;
+  }
+  await fbPatch("/players/"+safeKey(user),{password:pw});
+  document.getElementById("modal")?.classList.add("hidden");
+  await renderPlayers();
+}
+
+/* 攔截舊 localStorage-only 的建立/改密碼儲存動作 */
+document.addEventListener("click",function(e){
+  var b=e.target.closest && e.target.closest("[data-action]");
+  if(!b) return;
+  var action=b.getAttribute("data-action");
+
+  if(action==="create-user-save"){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    createPlayer().catch(function(err){
+      console.error(err);
+      alert("建立玩家失敗，請重新再試");
+    });
+    return;
+  }
+
+  if(action==="password-save"){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var user=decodeURIComponent(b.getAttribute("data-user")||"");
+    changePassword(user).catch(function(err){
+      console.error(err);
+      alert("修改密碼失敗，請重新再試");
+    });
+    return;
+  }
+
+  if(action==="refresh"){
+    setTimeout(renderPlayers,0);
+  }
+},true);
+
+/* 玩家列表上的 Firebase 改密碼按鈕 */
+document.addEventListener("click",function(e){
+  var b=e.target.closest && e.target.closest(".xm-fb-password");
+  if(!b) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  var u=decodeURIComponent(b.getAttribute("data-user")||"");
+  var title=document.getElementById("modalTitle");
+  var body=document.getElementById("modalBody");
+  var modal=document.getElementById("modal");
+  if(title) title.textContent="改密碼｜"+u;
+  if(body) body.innerHTML=
+    '<div class="field"><label>新密碼</label><input id="mPass"></div>'+
+    '<button type="button" class="primary" data-action="password-save" data-user="'+encodeURIComponent(u)+'">確認</button>';
+  if(modal) modal.classList.remove("hidden");
+},true);
+
+/* 原本 localStorage render() 可能會覆蓋玩家表，定期以 Firebase 畫面校正 */
+setInterval(renderPlayers,1200);
+setTimeout(renderPlayers,120);
+window.xmFirebaseRenderPlayers=renderPlayers;
+
+})();
+</script>
+
 </body>
 </html>
