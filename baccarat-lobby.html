@@ -82,6 +82,11 @@ padding-bottom:30px}
   pointer-events:none;
 }
 
+
+/* 單一百家樂分類 */
+.tabs{grid-template-columns:1fr!important;}
+.tabs .tab{width:100%;text-align:center;}
+
 </style>
 </head>
 <body>
@@ -92,9 +97,7 @@ padding-bottom:30px}
     <div class="wallet"><small>百家樂錢包</small><strong id="walletBalance">0.00</strong></div>
   </div>
   <div class="tabs">
-    <div class="tab active">全部廳</div>
-    <div class="tab">經典百家樂</div>
-    <div class="tab">熱門</div>
+    <div class="tab active">經典百家樂</div>
   </div>
 </header>
 
@@ -277,6 +280,17 @@ async function get(path){
   return await r.json();
 }
 
+async function put(path,value){
+  var r=await fetch(DB+path+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(value)
+  });
+  if(!r.ok)throw new Error("PUT "+r.status);
+  return await r.json();
+}
+
+
 function hash32(str){
   var h=2166136261>>>0;
   for(var i=0;i<str.length;i++){
@@ -413,21 +427,49 @@ function drawRoad(el,seed,cycleIndex,completedRounds){
   }
 }
 
-async function refreshRoom(room){
+
+async function ensureRoomTable(room){
+  var path="/baccarat/rooms/"+room;
   var info=null;
+
   try{
-    info=await get("/baccarat/rooms/"+room);
+    info=await get(path);
   }catch(e){
-    console.error(room+" 桌台讀取失敗",e);
+    console.error(room+" 讀取桌台失敗",e);
   }
 
-  var epoch=(info&&info.epoch)
-    ? Number(info.epoch)
-    : Date.parse("2026-08-11T00:00:00+08:00");
+  if(info && info.epoch && info.seed){
+    return info;
+  }
 
-  var seed=(info&&info.seed)
-    ? String(info.seed)
-    : "XM-BACCARAT-"+room+"-FALLBACK";
+  /*
+    牌桌不存在時，只建立一次共用 epoch/seed。
+    大廳與房內都讀這一份，不能各自重設。
+  */
+  var fresh={
+    epoch:Date.now(),
+    seed:"XM-BACCARAT-"+room+"-"+Date.now(),
+    createdAt:Date.now()
+  };
+
+  try{
+    await put(path,fresh);
+    var confirmed=await get(path);
+    if(confirmed && confirmed.epoch && confirmed.seed){
+      return confirmed;
+    }
+  }catch(e){
+    console.error(room+" 建立桌台失敗",e);
+  }
+
+  return fresh;
+}
+
+async function refreshRoom(room){
+  var info=await ensureRoomTable(room);
+
+  var epoch=Number(info.epoch);
+  var seed=String(info.seed);
 
   var tl=timeline(epoch);
 

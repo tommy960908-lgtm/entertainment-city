@@ -1709,46 +1709,42 @@ function bind(){
 }
 
 async function ensureTable(){
-  /*
-    優先使用 Firebase 共用桌台。
-    如果 Firebase 桌台節點暫時讀不到，改用所有裝置都相同的固定 epoch/seed，
-    不讓整個遊戲因此停止。
-  */
+  var current=null;
+
   try{
-    var current=await fbGet(TABLE_PATH);
-    if(current && current.epoch && current.seed){
-      table=current;
-      return;
-    }
-
-    var fresh={
-      epoch:Date.now(),
-      seed:"XM-BACCARAT-"+ROOM_ID,
-      createdAt:Date.now()
-    };
-
-    try{
-      await fbPut(TABLE_PATH,fresh);
-      table=await fbGet(TABLE_PATH);
-      if(table && table.epoch && table.seed)return;
-    }catch(e){
-      console.error("建立 Firebase 桌台失敗，改用固定共用時間軸",e);
-    }
+    current=await fbGet(TABLE_PATH);
   }catch(e){
-    console.error("讀取 Firebase 桌台失敗，改用固定共用時間軸",e);
+    console.error("讀取牌桌失敗",e);
+  }
+
+  if(current && current.epoch && current.seed){
+    table=current;
+    return;
   }
 
   /*
-    固定備援時間軸：
-    所有手機都用同一個起始時間與 seed。
-    因此就算 Firebase 桌台節點短暫失效，倒數/牌序仍會繼續跑，
-    且重新整理不會重新抽牌。
+    與大廳共用同一個建立規則。
+    如果該桌真的還不存在，就建立一次，之後永遠沿用，
+    不會每次進牌桌都從第1局重來。
   */
-  table={
-    epoch:Date.parse("2026-08-11T00:00:00+08:00"),
-    seed:"XM-BACCARAT-"+ROOM_ID+"-FALLBACK",
-    fallback:true
+  var fresh={
+    epoch:Date.now(),
+    seed:"XM-BACCARAT-"+ROOM_ID+"-"+Date.now(),
+    createdAt:Date.now()
   };
+
+  try{
+    await fbPut(TABLE_PATH,fresh);
+    var confirmed=await fbGet(TABLE_PATH);
+    if(confirmed && confirmed.epoch && confirmed.seed){
+      table=confirmed;
+      return;
+    }
+  }catch(e){
+    console.error("建立牌桌失敗",e);
+  }
+
+  table=fresh;
 }
 async function init(){
   /*
