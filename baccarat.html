@@ -317,10 +317,8 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .sa-l6{left:35.0%;width:29.3%}
 .sa-bp{left:65.0%;width:30.0%}
 
-/* 不顯示任何黃色框 */
-.hit,.hit:active,.hit:focus,.hit:focus-visible,.hit.sel{
-  outline:none!important;
-  box-shadow:none!important;
+/* 一般點擊不顯示瀏覽器預設框；真正選取框由 xm-selected / xm-bet-active 控制 */
+.hit:focus,.hit:focus-visible{
   -webkit-tap-highlight-color:transparent!important;
 }
 
@@ -348,6 +346,40 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   background:#080808;display:flex;flex-direction:column;justify-content:center;padding:7px 12px;pointer-events:none;
 }
 .win-stat-overlay strong{color:#19ad27}
+
+
+/* ===== 已選籌碼 / 已下注區黃色提示框 ===== */
+.hit.xm-selected,
+.hit.xm-bet-active{
+  outline:3px solid #ffd84d !important;
+  outline-offset:-3px !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.45) inset,
+    0 0 12px rgba(255,216,77,.95),
+    0 0 24px rgba(255,184,0,.45) !important;
+}
+.chip.xm-selected{
+  border-radius:50% !important;
+}
+.player.xm-bet-active,
+.tie.xm-bet-active,
+.banker.xm-bet-active,
+.sidebet-playerpair.xm-bet-active,
+.sidebet-lucky6.xm-bet-active,
+.sidebet-bankerpair.xm-bet-active{
+  border-radius:12px;
+}
+
+
+.room-closed-mask{
+  position:absolute;
+  z-index:80;
+  inset:0;
+  background:rgba(0,0,0,.48);
+  display:none;
+  pointer-events:none;
+}
+.room-closed-mask.show{display:block}
 
 </style>
 </head>
@@ -385,6 +417,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
   <div class="fly-card" id="fly1"></div>
   <div class="fly-card" id="fly2"></div>
+  <div class="room-closed-mask" id="roomClosedMask"></div>
   <div class="status" id="status">第 1 局｜下注中 10</div>
   <div class="cards pc" id="pc"></div>
   <div class="cards bc" id="bc"></div>
@@ -448,6 +481,10 @@ var CARD_MS=1500;       // 每張牌佔 1.5 秒
 var RESULT_MS=4000;     // 結果停留 4 秒
 var MAX_CARDS=6;        // 最多 6 張（閒3 + 莊3）
 var ROUND_MS=BET_MS + CARD_MS*MAX_CARDS + RESULT_MS;
+var BOARD_CAPACITY=108;
+var ROOM_CLOSE_MS=60000;
+var SESSION_PLAY_MS=BOARD_CAPACITY*ROUND_MS;
+var SESSION_MS=SESSION_PLAY_MS+ROOM_CLOSE_MS;
 
 var SUITS=["♠","♥","♦","♣"];
 var RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
@@ -523,7 +560,8 @@ async function syncWallet(){
   paintBets();
 }
 function betPath(roundNo){
-  return "/baccaratBets/table1/"+roundNo+"/"+currentUserKey;
+  var tl=getTimeline(Date.now());
+  return "/baccaratBets/table1/cycle_"+tl.cycleIndex+"/round_"+roundNo+"/"+currentUserKey;
 }
 async function loadRoundBet(roundNo){
   if(!currentUserKey)return;
@@ -569,7 +607,7 @@ function mulberry32(a){
   };
 }
 
-function buildShoeForRound(roundNo){
+function buildShoeForRound(cycleIndex,roundNo){
   var deck=[];
   for(var d=0;d<8;d++){
     for(var si=0;si<SUITS.length;si++){
@@ -579,7 +617,7 @@ function buildShoeForRound(roundNo){
     }
   }
 
-  var rand=mulberry32(hash32(String(table.seed)+"|"+String(roundNo)));
+  var rand=mulberry32(hash32(String(table.seed)+"|cycle:"+String(cycleIndex)+"|round:"+String(roundNo)));
 
   for(var i=deck.length-1;i>0;i--){
     var j=Math.floor(rand()*(i+1));
@@ -610,8 +648,8 @@ function shouldBankerDraw(bt,third){
   return false;
 }
 
-function makeRound(roundNo){
-  var shoe=buildShoeForRound(roundNo);
+function makeRound(cycleIndex,roundNo){
+  var shoe=buildShoeForRound(cycleIndex,roundNo);
   var pos=shoe.length-1;
   function draw(){return shoe[pos--]}
 
@@ -641,6 +679,7 @@ function makeRound(roundNo){
   pt=total(p);bt=total(b);
 
   return {
+    cycleIndex:cycleIndex,
     roundNo:roundNo,
     playerCards:p,
     bankerCards:b,
@@ -653,12 +692,27 @@ function makeRound(roundNo){
 
 function getTimeline(now){
   var elapsed=Math.max(0,now-Number(table.epoch));
-  var roundIndex=Math.floor(elapsed/ROUND_MS);
-  var inRound=elapsed%ROUND_MS;
+  var cycleIndex=Math.floor(elapsed/SESSION_MS);
+  var inSession=elapsed%SESSION_MS;
+
+  /* 結果板滿 108 局後，房間關閉 1 分鐘 */
+  if(inSession>=SESSION_PLAY_MS){
+    return {
+      cycleIndex:cycleIndex,
+      phase:"closed",
+      closeRemain:Math.max(0,Math.ceil((SESSION_MS-inSession)/1000)),
+      roundNo:BOARD_CAPACITY,
+      dealt:0
+    };
+  }
+
+  var roundIndex=Math.floor(inSession/ROUND_MS);
+  var inRound=inSession%ROUND_MS;
   var roundNo=roundIndex+1;
 
   if(inRound < BET_MS){
     return {
+      cycleIndex:cycleIndex,
       roundNo:roundNo,
       phase:"betting",
       elapsed:inRound,
@@ -668,12 +722,13 @@ function getTimeline(now){
   }
 
   var dealElapsed=inRound-BET_MS;
-  var round=makeRound(roundNo);
+  var round=makeRound(cycleIndex,roundNo);
   var actualCards=round.sequence.length;
   var actualDealDuration=actualCards*CARD_MS;
 
   if(dealElapsed < actualDealDuration){
     return {
+      cycleIndex:cycleIndex,
       roundNo:roundNo,
       phase:"dealing",
       elapsed:dealElapsed,
@@ -682,28 +737,14 @@ function getTimeline(now){
     };
   }
 
-  var resultStart=BET_MS+actualDealDuration;
-  if(inRound < resultStart+RESULT_MS){
-    return {
-      roundNo:roundNo,
-      phase:"result",
-      elapsed:inRound-resultStart,
-      dealt:actualCards
-    };
-  }
-
-  /*
-    因為 ROUND_MS 預留 6 張牌時間，若該局只有 4 或 5 張，
-    剩餘空檔視為結果停留，避免每局長度不同造成裝置不同步。
-  */
   return {
+    cycleIndex:cycleIndex,
     roundNo:roundNo,
     phase:"result",
-    elapsed:inRound-resultStart,
+    elapsed:inRound-(BET_MS+actualDealDuration),
     dealt:actualCards
   };
 }
-
 function makeSmallCard(c,index){
   var wrap=document.createElement("div");
   wrap.className="bcard-wrap";
@@ -773,11 +814,12 @@ function paintBets(){
   for(var i=0;i<all.length;i++){
     all[i].classList.remove("sel");
     all[i].style.outline="none";
-    all[i].style.boxShadow="none";
+    /* 不在這裡清除選取狀態，交給 refreshSelectionUI 控制 */
   }
+  refreshSelectionUI();
 }
 
-function renderRoadForCurrentRound(currentRoundNo){
+function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
   var board=$("realRoad");
   var summary=$("roadSummary");
   if(!board||!summary)return;
@@ -790,11 +832,11 @@ function renderRoadForCurrentRound(currentRoundNo){
   }
 
   var results=[];
-  var start=Math.max(1,currentRoundNo-107);
+  var endRound=includeCurrent?currentRoundNo:(currentRoundNo-1);
+  endRound=Math.max(0,Math.min(BOARD_CAPACITY,endRound));
 
-  /* 只列已經完整結束的局 */
-  for(var r=start;r<currentRoundNo;r++){
-    results.push(makeRound(r).outcome);
+  for(var r=1;r<=endRound;r++){
+    results.push(makeRound(cycleIndex,r).outcome);
   }
 
   for(var j=0;j<results.length;j++){
@@ -824,86 +866,6 @@ function renderRoadForCurrentRound(currentRoundNo){
     '<div class="t">和　'+tie+'</div>'+
     '<div>總　'+results.length+'</div>';
 }
-
-
-function isPair(cards){
-  return Array.isArray(cards) && cards.length>=2 && cards[0].r===cards[1].r;
-}
-
-function settleBets(round){
-  /*
-    回傳「總返還金額」，包含本金。
-    閒 1:1 -> 100 中獎返 200
-    莊 1:1 -> 100 中獎返 200
-    和 1:8 -> 100 中獎返 900
-    閒對/莊對 1:11 -> 100 中獎返 1200
-    幸運6：
-      莊以 6 點獲勝，兩張牌 1:12 -> 返 13 倍
-      莊以 6 點獲勝，三張牌 1:20 -> 返 21 倍
-  */
-  var payout=0;
-
-  if(round.outcome==="player"){
-    payout += Number(bets.player||0)*2;
-  }else if(round.outcome==="banker"){
-    payout += Number(bets.banker||0)*2;
-  }else{
-    payout += Number(bets.tie||0)*9;
-
-    /* 和局時莊、閒本金退回 */
-    payout += Number(bets.player||0);
-    payout += Number(bets.banker||0);
-  }
-
-  if(isPair(round.playerCards)){
-    payout += Number(bets.playerPair||0)*12;
-  }
-
-  if(isPair(round.bankerCards)){
-    payout += Number(bets.bankerPair||0)*12;
-  }
-
-  if(round.outcome==="banker" && Number(round.bankerTotal)===6){
-    if(round.bankerCards.length===2){
-      payout += Number(bets.lucky6||0)*13;
-    }else if(round.bankerCards.length===3){
-      payout += Number(bets.lucky6||0)*21;
-    }
-  }
-
-  return Math.round(payout*100)/100;
-}
-
-
-async function settleFirebaseRound(round){
-  var rec=await walletGet(betPath(round.roundNo));
-  if(!rec || rec.settled)return;
-
-  bets={
-    player:Number(rec.player||0),tie:Number(rec.tie||0),banker:Number(rec.banker||0),
-    playerPair:Number(rec.playerPair||0),bankerPair:Number(rec.bankerPair||0),lucky6:Number(rec.lucky6||0)
-  };
-
-  var returned=settleBets(round);
-  var remoteBalance=Number(await walletGet("/wallets/"+currentUserKey+"/baccarat")||0);
-
-  rec.settled=true;
-  rec.payout=returned;
-  rec.outcome=round.outcome;
-  rec.settledAt=Date.now();
-
-  var updates={};
-  updates["wallets/"+currentUserKey+"/baccarat"]=Math.round((remoteBalance+returned)*100)/100;
-  updates["baccaratBets/table1/"+round.roundNo+"/"+currentUserKey]=rec;
-  await walletPatch(updates);
-
-  balance=Math.round((remoteBalance+returned)*100)/100;
-  var wagerTotal=Number(rec.player||0)+Number(rec.tie||0)+Number(rec.banker||0)+Number(rec.playerPair||0)+Number(rec.bankerPair||0)+Number(rec.lucky6||0);
-  lastWin=Math.round((returned-wagerTotal)*100)/100;
-  paintBets();
-  if(wagerTotal>0)toast("本局返還 "+fmt(returned));
-}
-
 function showResult(round){
   var label=round.outcome==="banker"?"莊贏":(round.outcome==="player"?"閒贏":"和局");
 
@@ -935,55 +897,72 @@ function renderNow(){
 
   var now=Date.now();
   var tl=getTimeline(now);
-  var round=makeRound(tl.roundNo);
 
-  var visualKey=tl.roundNo+"|"+tl.phase+"|"+tl.dealt+"|"+tl.remain;
+  /* 房間關閉 1 分鐘：結果板清空，不能下注 */
+  if(tl.phase==="closed"){
+    if($("roomClosedMask"))$("roomClosedMask").classList.add("show");
+    clearCards();
+    hideResult();
+    bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
+    paintBets();
+    renderRoadForCurrentRound(tl.cycleIndex,0,false);
+    setStatus("房間休息中 "+tl.closeRemain+" 秒",BOARD_CAPACITY);
+    if($("phaseBtn"))$("phaseBtn").textContent="房間休息中 "+tl.closeRemain+" 秒";
+    lastVisualKey="closed|"+tl.cycleIndex+"|"+tl.closeRemain;
+    return;
+  }
+
+  if($("roomClosedMask"))$("roomClosedMask").classList.remove("show");
+  var round=makeRound(tl.cycleIndex,tl.roundNo);
+  var visualKey=tl.cycleIndex+"|"+tl.roundNo+"|"+tl.phase+"|"+tl.dealt+"|"+tl.remain;
 
   if(tl.phase==="betting"){
     clearCards();
     hideResult();
     setStatus("下注中 "+tl.remain,tl.roundNo);
 
+    /* 新週期第1局自動清空下注與輸贏顯示 */
+    if(lastVisualKey && !lastVisualKey.startsWith(tl.cycleIndex+"|"+tl.roundNo+"|")){
+      bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
+      lastWin=0;
+      paintBets();
+    }
+
     if(currentBetRound!==tl.roundNo && currentUserKey){
       loadRoundBet(tl.roundNo).catch(function(){});
       lastWin=0;
     }
+
+    renderRoadForCurrentRound(tl.cycleIndex,tl.roundNo,false);
   }
   else if(tl.phase==="dealing"){
     hideResult();
     renderCards(round,tl.dealt);
-
-    var nextIndex=tl.dealt;
-    if(nextIndex<round.sequence.length){
-      setStatus("封盤・發牌中",tl.roundNo);
-    }
+    setStatus("封盤・發牌中",tl.roundNo);
+    renderRoadForCurrentRound(tl.cycleIndex,tl.roundNo,false);
   }
   else{
     renderCards(round,round.sequence.length);
 
-    /*
-      每局只結算一次，renderNow 每 200ms 跑也不會重複加錢。
-    */
     if(settledRoundNo!==round.roundNo && currentUserKey){
       settleFirebaseRound(round).catch(function(e){console.error(e)});
       settledRoundNo=round.roundNo;
     }
 
     showResult(round);
+    renderRoadForCurrentRound(tl.cycleIndex,tl.roundNo,true);
   }
 
-  renderRoadForCurrentRound(tl.roundNo);
   lastVisualKey=visualKey;
 }
-
 function selectChip(v){
   var tl=getTimeline(Date.now());
   if(tl.phase!=="betting"){
-    toast("目前已封盤");
+    toast(tl.phase==="closed"?"房間休息中":"目前已封盤");
     return;
   }
   var n=Number(v);
-  if(n>0)chip=n;
+  if(n>0){chip=n;refreshSelectionUI();}
 }
 
 async function placeBet(type){
@@ -1036,7 +1015,7 @@ function bind(){
       }
 
       var v=Number(prompt("請輸入自訂籌碼金額"));
-      if(v>0)chip=v;
+      if(v>0){chip=v;refreshSelectionUI();}
       return;
     }
 
@@ -1077,9 +1056,10 @@ async function init(){
   try{
     await ensureTable();
     bind();
+    refreshSelectionUI();
     await syncWallet();
     var tl0=getTimeline(Date.now());
-    if(currentUserKey)await loadRoundBet(tl0.roundNo);
+    if(currentUserKey && tl0.phase!=="closed")await loadRoundBet(tl0.roundNo);
     renderNow();
 
     ticker=setInterval(renderNow,200);
