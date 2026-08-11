@@ -21,7 +21,20 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .amount{position:absolute;z-index:14;top:50.4%;font-weight:900;color:#fff;text-shadow:0 2px 4px #000;font-size:clamp(11px,2.2vw,22px);text-align:center;pointer-events:none}
 .ap{left:4.5%;width:29%} .at{left:35.3%;width:29%} .ab{left:65.2%;width:30%}
 .status{position:absolute;z-index:15;left:50%;top:6.5%;transform:translateX(-50%);padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.82);border:1px solid #d2aa4f;color:#f5d574;font-weight:900;font-size:clamp(11px,1.8vw,18px);white-space:nowrap;pointer-events:none}
-.cards{position:absolute;z-index:15;top:29%;width:14%;height:12%;display:flex;gap:3px;align-items:center;justify-content:center;pointer-events:none}
+.cards{
+  position:absolute;
+  z-index:15;
+  top:29%;
+  width:14%;
+  height:14.5%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:auto auto;
+  gap:3px;
+  align-items:center;
+  justify-items:center;
+  pointer-events:none;
+}
 .pc{left:35%} .bc{left:52%}
 
 .bcard-wrap{
@@ -238,6 +251,32 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .road-summary .p{color:#176dcc}
 .road-summary .t{color:#2d923f}
 
+
+.cards .bcard-wrap:nth-child(1),
+.cards .bcard-wrap:nth-child(2){
+  grid-row:1;
+}
+.cards .bcard-wrap:nth-child(3){
+  grid-column:1 / span 2;
+  grid-row:2;
+  width:42%;
+  min-width:30px;
+  max-width:58px;
+  transform:rotate(90deg);
+  transform-origin:center center;
+  margin-top:-3px;
+}
+.road-cover{
+  position:absolute;
+  z-index:21;
+  left:0;
+  top:77.7%;
+  width:100%;
+  height:14.8%;
+  background:#fff;
+  pointer-events:none;
+}
+
 </style>
 </head>
 <body>
@@ -283,6 +322,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="score-banner" id="scoreBanner"></div>
 <div class="result-banner" id="resultBanner"></div>
 
+<div class="road-cover"></div>
 <div class="real-road" id="realRoad"></div>
 <div class="road-summary" id="roadSummary">
   <div class="b">莊　0</div>
@@ -387,26 +427,31 @@ function renderRoad(){
 
   board.innerHTML="";
 
-  /* 第一局以前完全空白；之後每局依序寫入結果 */
   for(var i=0;i<108;i++){
     var cell=document.createElement("div");
     cell.className="road-cell";
-
-    if(i<roadHistory.length){
-      var result=roadHistory[i];
-      var mark=document.createElement("div");
-      mark.className="road-mark "+result;
-      mark.textContent=result==="banker"?"莊":(result==="player"?"閒":"和");
-      cell.appendChild(mark);
-    }
     board.appendChild(cell);
   }
 
+  for(var j=0;j<roadHistory.length && j<108;j++){
+    var col=Math.floor(j/6);
+    var row=j%6;
+    var index=row*18+col;
+    var cell=board.children[index];
+    if(!cell)continue;
+
+    var result=roadHistory[j];
+    var mark=document.createElement("div");
+    mark.className="road-mark "+result;
+    mark.textContent=result==="banker"?"莊":(result==="player"?"閒":"和");
+    cell.appendChild(mark);
+  }
+
   var banker=0,player=0,tie=0;
-  for(var j=0;j<roadHistory.length;j++){
-    if(roadHistory[j]==="banker")banker++;
-    else if(roadHistory[j]==="player")player++;
-    else tie++;
+  for(var k=0;k<roadHistory.length;k++){
+    if(roadHistory[k]==="banker")banker++;
+    else if(roadHistory[k]==="player")player++;
+    else if(roadHistory[k]==="tie")tie++;
   }
 
   summary.innerHTML=
