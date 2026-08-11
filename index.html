@@ -1715,6 +1715,37 @@ html{
   min-height:44px;
 }
 
+
+/* ===== 首頁分類區間加大：避免加入主畫面後分類誤判 ===== */
+#ELECTRONIC,
+#SPORT,
+#TABLE{
+  scroll-margin-top:150px!important;
+}
+
+/* 電子區與下一區拉開 */
+#ELECTRONIC{
+  padding-bottom:90px!important;
+}
+
+/* 體育標題往下 */
+#SPORT{
+  padding-top:70px!important;
+  padding-bottom:90px!important;
+}
+
+/* 百家樂標題再往下 */
+#TABLE{
+  padding-top:70px!important;
+}
+
+/* 加入主畫面／窄高度裝置再多留一點距離 */
+@media (max-height:850px){
+  #ELECTRONIC{padding-bottom:110px!important;}
+  #SPORT{padding-top:85px!important;padding-bottom:110px!important;}
+  #TABLE{padding-top:85px!important;}
+}
+
 </style>
 </head>
 <body>
@@ -3822,7 +3853,7 @@ window.xmRenderTransactionHistory=render;
     var tr = (table.querySelector(".section-head") || table).getBoundingClientRect();
 
     // 百家樂標題進入畫面
-    if(tr.top <= window.innerHeight && tr.bottom >= 0){
+    if(tr.top <= window.innerHeight*0.42 && tr.bottom >= 0){
       activate("TABLE");
       return;
     }
@@ -3834,7 +3865,7 @@ window.xmRenderTransactionHistory=render;
     }
 
     // 體育標題進入畫面
-    if(sr.top <= window.innerHeight && sr.bottom >= 0){
+    if(sr.top <= window.innerHeight*0.42 && sr.bottom >= 0){
       activate("SPORT");
       return;
     }
@@ -3902,7 +3933,9 @@ window.xmRenderTransactionHistory=render;
       var sportHead = target.querySelector(".section-head") || target;
       var currentY = window.pageYOffset || 0;
       var sportTop = sportHead.getBoundingClientRect().top + currentY;
-      var desiredTop = Math.max(0, sportTop - Math.round(window.innerHeight * 0.28));
+      var navH = nav.getBoundingClientRect().height || 0;
+      /* 體育標題固定停在分類列下方，不再依螢幕高度往下捲過頭 */
+      var desiredTop = Math.max(0, sportTop - navH - 18);
 
       window.scrollTo({
         top: desiredTop,
