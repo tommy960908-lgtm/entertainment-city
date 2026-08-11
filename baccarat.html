@@ -374,8 +374,8 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .room-closed-mask{
   position:absolute;
   z-index:80;
-  inset:0;
-  background:rgba(0,0,0,.48);
+  left:0;right:0;top:0;height:71.5%;
+  background:rgba(0,0,0,.35);
   display:none;
   pointer-events:none;
 }
@@ -452,13 +452,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 <div class="controls single"><button class="phase" id="phaseBtn" disabled>下注中 10</button></div>
 
-<div class="toast" id="toast"></div>
-
-<script>
-
-
-
-(function(){
+<div class="toast" id="t(function(){
 "use strict";
 
 /*
@@ -476,6 +470,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
 var TABLE_PATH="/baccarat/table1";
+var TABLE_VERSION=2;
 var BET_MS=10000;       // 下注 10 秒
 var CARD_MS=1500;       // 每張牌佔 1.5 秒
 var RESULT_MS=4000;     // 結果停留 4 秒
@@ -906,8 +901,8 @@ function renderNow(){
     bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
     paintBets();
     renderRoadForCurrentRound(tl.cycleIndex,0,false);
-    setStatus("房間休息中 "+tl.closeRemain+" 秒",BOARD_CAPACITY);
-    if($("phaseBtn"))$("phaseBtn").textContent="房間休息中 "+tl.closeRemain+" 秒";
+    if($("status"))$("status").textContent="房間休息中｜"+tl.closeRemain+" 秒後重新開桌";
+    if($("phaseBtn"))$("phaseBtn").textContent="休息 "+tl.closeRemain+" 秒";
     lastVisualKey="closed|"+tl.cycleIndex+"|"+tl.closeRemain;
     return;
   }
@@ -967,7 +962,7 @@ function selectChip(v){
 
 async function placeBet(type){
   var tl=getTimeline(Date.now());
-  if(tl.phase!=="betting"){toast("目前已封盤");return}
+  if(tl.phase!=="betting"){toast(tl.phase==="closed"?"房間休息中":"目前已封盤");return}
   if(!walletReady){toast("百家樂錢包尚未載入");return}
   if(!currentUser){toast("請先登入");return}
 
@@ -1031,42 +1026,78 @@ function bind(){
 }
 
 async function ensureTable(){
-  var current=await fbGet(TABLE_PATH);
-
-  if(current && current.epoch && current.seed){
-    table=current;
-    return;
+  var current=null;
+  try{
+    current=await fbGet(TABLE_PATH);
+  }catch(e){
+    console.error("讀取共用桌台失敗",e);
+    throw new Error("TABLE_READ_FAILED");
   }
 
   /*
-    第一個開啟新版桌台的人建立共用 epoch。
-    後續所有裝置都讀同一份。
+    舊版 table1 沒有 version 時，重新建立一次新的共用時間軸。
+    這只會在升級到這版時做一次，避免沿用很舊的 epoch 一進頁面就剛好落在休息區。
   */
-  var fresh={
-    epoch:Date.now(),
-    seed:"XM-"+Date.now()+"-"+Math.floor(Math.random()*1000000000),
-    createdAt:Date.now()
-  };
+  if(!current || !current.epoch || !current.seed || Number(current.version||0)!==TABLE_VERSION){
+    var fresh={
+      version:TABLE_VERSION,
+      epoch:Date.now(),
+      seed:"XM-TABLE2-"+Date.now()+"-"+Math.floor(Math.random()*1000000000),
+      createdAt:Date.now()
+    };
 
-  await fbPut(TABLE_PATH,fresh);
-  table=await fbGet(TABLE_PATH);
+    try{
+      await fbPut(TABLE_PATH,fresh);
+      current=await fbGet(TABLE_PATH);
+    }catch(e){
+      console.error("建立共用桌台失敗",e);
+      throw new Error("TABLE_WRITE_FAILED");
+    }
+  }
+
+  table=current;
 }
-
 async function init(){
+  /* 第 1 層：共用桌台。只有這個真的失敗才顯示桌台同步失敗。 */
   try{
     await ensureTable();
-    bind();
-    refreshSelectionUI();
-    await syncWallet();
-    var tl0=getTimeline(Date.now());
-    if(currentUserKey && tl0.phase!=="closed")await loadRoundBet(tl0.roundNo);
-    renderNow();
-
-    ticker=setInterval(renderNow,200);
-    setInterval(function(){syncWallet().catch(function(){})},1500);
   }catch(e){
     console.error(e);
-    toast("桌台同步失敗");
+    toast("桌台同步失敗，請重新整理");
+    return;
+  }
+
+  bind();
+  refreshSelectionUI();
+
+  /* 先啟動桌台，不能等錢包。 */
+  renderNow();
+  ticker=setInterval(renderNow,200);
+
+  /* 第 2 層：玩家錢包。失敗只影響下注，不影響倒數/發牌/開牌。 */
+  try{
+    await syncWallet();
+    var tl0=getTimeline(Date.now());
+    if(currentUserKey && tl0.phase!=="closed"){
+      try{await loadRoundBet(tl0.roundNo)}catch(e){console.error("讀取本局下注失敗",e)}
+    }
+  }catch(e){
+    console.error("百家樂錢包同步失敗",e);
+    walletReady=false;
+    balance=0;
+    paintBets();
+  }
+
+  setInterval(function(){
+    syncWallet().catch(function(e){
+      console.error("百家樂錢包同步失敗",e);
+      walletReady=false;
+    });
+  },1500);
+}
+init();
+
+})();敗");
   }
 }
 
