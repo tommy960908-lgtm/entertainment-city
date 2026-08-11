@@ -725,6 +725,72 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 /* 人物上方狀態框只顯示局數/下注/封盤，不拿來顯示勝負 */
 .status{z-index:190!important}
 
+
+/* ===== 唯一籌碼選取框 ===== */
+.xm-chip-ring{
+  position:absolute;
+  z-index:175;
+  pointer-events:none;
+  display:none;
+  border:4px solid #ffd84a;
+  border-radius:50%;
+  box-shadow:0 0 14px rgba(255,216,74,.95), inset 0 0 8px rgba(255,216,74,.18);
+}
+.xm-chip-ring.show{display:block}
+#xmRing100{left:7.03%;top:63.87%;width:10.94%;height:7.10%}
+#xmRing500{left:21.97%;top:63.87%;width:10.94%;height:7.10%}
+#xmRing1000{left:36.82%;top:63.87%;width:10.94%;height:7.10%}
+#xmRing5000{left:51.95%;top:63.87%;width:10.94%;height:7.10%}
+#xmRing10000{left:66.80%;top:63.87%;width:10.94%;height:7.10%}
+#xmRingCustom{left:81.54%;top:63.87%;width:10.94%;height:7.10%}
+
+/* 關掉所有舊 CSS 可能留下的黃框 */
+.hit.xm-chip-selected,
+.hit.xm-bet-selected,
+.hit.xm-selected,
+.hit.xm-bet-active,
+.xm-highlight{
+  outline:none!important;
+  box-shadow:none!important;
+  border-color:transparent!important;
+}
+
+/* ===== 唯一主下注框與格內文字 ===== */
+.xm-main-bet-box{
+  position:absolute;
+  z-index:176;
+  pointer-events:none;
+  display:none;
+  border:4px solid #ffd84a;
+  border-radius:10px;
+  box-shadow:0 0 14px rgba(255,216,74,.95), inset 0 0 15px rgba(255,216,74,.14);
+}
+.xm-main-bet-box.show{display:block}
+#xmMainPlayer{left:1.9%;top:51.8%;width:32.5%;height:11.0%}
+#xmMainTie{left:34.45%;top:51.8%;width:30.6%;height:11.0%}
+#xmMainBanker{left:65.0%;top:51.8%;width:33.1%;height:11.0%}
+
+.xm-main-bet-text{
+  position:absolute;
+  z-index:177;
+  pointer-events:none;
+  display:none;
+  transform:translate(-50%,-50%);
+  padding:5px 10px;
+  border-radius:11px;
+  background:rgba(0,0,0,.78);
+  border:1px solid #ffd84a;
+  color:#ffe16b;
+  font-weight:950;
+  font-size:clamp(11px,2vw,20px);
+  white-space:nowrap;
+  text-shadow:0 1px 3px #000;
+}
+.xm-main-bet-text.show{display:block}
+#xmTextPlayer{left:18.15%;top:58.15%}
+#xmTextTie{left:49.75%;top:58.15%}
+#xmTextBanker{left:81.55%;top:58.15%}
+
 </style>
 </head>
 <body>
@@ -755,12 +821,6 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   <div class="wallet-stat-overlay"><small>餘額</small><strong id="liveBalance">0.00</strong></div>
   <div class="wager-stat-overlay"><small>下注金額</small><strong id="liveWager">0.00</strong></div>
   <div class="win-stat-overlay"><small>輸贏</small><strong id="liveWin">0.00</strong></div>
-  <div class="xm-bet-money" id="xmBetMoneyPlayer"></div>
-  <div class="xm-bet-money" id="xmBetMoneyTie"></div>
-  <div class="xm-bet-money" id="xmBetMoneyBanker"></div>
-  <div class="xm-bet-money" id="xmBetMoneyPlayerPair"></div>
-  <div class="xm-bet-money" id="xmBetMoneyLucky6"></div>
-  <div class="xm-bet-money" id="xmBetMoneyBankerPair"></div>
   <div class="amount ap" id="ap"></div>
   <div class="amount at" id="at"></div>
   <div class="amount ab" id="ab"></div>
@@ -768,36 +828,6 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   <div class="fly-card" id="fly1"></div>
   <div class="fly-card" id="fly2"></div>
   <div class="room-closed-mask" id="roomClosedMask"></div>
-  
-<div class="xm-highlight" id="hl-chip-100"></div>
-<div class="xm-highlight" id="hl-chip-500"></div>
-<div class="xm-highlight" id="hl-chip-1000"></div>
-<div class="xm-highlight" id="hl-chip-5000"></div>
-<div class="xm-highlight" id="hl-chip-10000"></div>
-<div class="xm-highlight" id="hl-chip-custom"></div>
-
-<div class="xm-highlight" id="hl-bet-player"></div>
-<div class="xm-highlight" id="hl-bet-tie"></div>
-<div class="xm-highlight" id="hl-bet-banker"></div>
-<div class="xm-highlight" id="hl-bet-playerPair"></div>
-<div class="xm-highlight" id="hl-bet-lucky6"></div>
-<div class="xm-highlight" id="hl-bet-bankerPair"></div>
-
-
-<div class="xm-main-bet-frame" id="xmFramePlayer"></div>
-<div class="xm-main-bet-frame" id="xmFrameTie"></div>
-<div class="xm-main-bet-frame" id="xmFrameBanker"></div>
-
-<div class="xm-main-bet-label" id="xmLabelPlayer"></div>
-<div class="xm-main-bet-label" id="xmLabelTie"></div>
-<div class="xm-main-bet-label" id="xmLabelBanker"></div>
-
-<div class="xm-chip-frame" id="xmChip100"></div>
-<div class="xm-chip-frame" id="xmChip500"></div>
-<div class="xm-chip-frame" id="xmChip1000"></div>
-<div class="xm-chip-frame" id="xmChip5000"></div>
-<div class="xm-chip-frame" id="xmChip10000"></div>
-<div class="xm-chip-frame" id="xmChipCustom"></div>
 
 
 <div class="xm-center-result" id="xmCenterResult">
@@ -814,6 +844,22 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   </div>
   <div class="xm-center-winner" id="xmCenterWinner">莊贏</div>
 </div>
+
+
+<div class="xm-chip-ring" id="xmRing100"></div>
+<div class="xm-chip-ring" id="xmRing500"></div>
+<div class="xm-chip-ring" id="xmRing1000"></div>
+<div class="xm-chip-ring" id="xmRing5000"></div>
+<div class="xm-chip-ring" id="xmRing10000"></div>
+<div class="xm-chip-ring" id="xmRingCustom"></div>
+
+<div class="xm-main-bet-box" id="xmMainPlayer"></div>
+<div class="xm-main-bet-box" id="xmMainTie"></div>
+<div class="xm-main-bet-box" id="xmMainBanker"></div>
+
+<div class="xm-main-bet-text" id="xmTextPlayer"></div>
+<div class="xm-main-bet-text" id="xmTextTie"></div>
+<div class="xm-main-bet-text" id="xmTextBanker"></div>
 
 <div class="status" id="status">第 1 局｜下注中 10</div>
   <div class="cards pc" id="pc"></div>
@@ -977,98 +1023,6 @@ async function loadRoundBet(roundNo){
 }
 
 
-function updatePlayerBetUI(){
-  function showHighlight(id,on){
-    var el=document.getElementById(id);
-    if(el)el.classList.toggle("show",!!on);
-  }
-
-  /* 籌碼只亮最後選中的那一顆 */
-  showHighlight("hl-chip-100",Number(chip)===100);
-  showHighlight("hl-chip-500",Number(chip)===500);
-  showHighlight("hl-chip-1000",Number(chip)===1000);
-  showHighlight("hl-chip-5000",Number(chip)===5000);
-  showHighlight("hl-chip-10000",Number(chip)===10000);
-
-  var fixed=[100,500,1000,5000,10000];
-  showHighlight(
-    "hl-chip-custom",
-    Number(chip)>0 && fixed.indexOf(Number(chip))===-1
-  );
-
-  /* 哪個下注區有金額，哪個框就亮 */
-  showHighlight("hl-bet-player",Number(bets.player||0)>0);
-  showHighlight("hl-bet-tie",Number(bets.tie||0)>0);
-  showHighlight("hl-bet-banker",Number(bets.banker||0)>0);
-  showHighlight("hl-bet-playerPair",Number(bets.playerPair||0)>0);
-  showHighlight("hl-bet-lucky6",Number(bets.lucky6||0)>0);
-  showHighlight("hl-bet-bankerPair",Number(bets.bankerPair||0)>0);
-
-  function badge(id,value){
-    var el=document.getElementById(id);
-    if(!el)return;
-    var v=Number(value||0);
-    if(v>0){
-      el.textContent=v.toLocaleString("en-US",{
-        minimumFractionDigits:2,
-        maximumFractionDigits:2
-      });
-      el.classList.add("show");
-    }else{
-      el.textContent="";
-      el.classList.remove("show");
-    }
-  }
-
-  badge("xmBetMoneyPlayer",bets.player);
-  badge("xmBetMoneyTie",bets.tie);
-  badge("xmBetMoneyBanker",bets.banker);
-  badge("xmBetMoneyPlayerPair",bets.playerPair);
-  badge("xmBetMoneyLucky6",bets.lucky6);
-  badge("xmBetMoneyBankerPair",bets.bankerPair);
-}
-
-
-function renderBetSelection(){
-  function toggle(id,on){
-    var el=document.getElementById(id);
-    if(el)el.classList.toggle("show",!!on);
-  }
-  function label(id,name,value){
-    var el=document.getElementById(id);
-    if(!el)return;
-    var n=Number(value||0);
-    if(n>0){
-      el.textContent=name+" "+n.toLocaleString("en-US",{
-        minimumFractionDigits:2,
-        maximumFractionDigits:2
-      });
-      el.classList.add("show");
-    }else{
-      el.textContent="";
-      el.classList.remove("show");
-    }
-  }
-
-  /* 籌碼黃框永遠跟最後選到的面額走 */
-  toggle("xmChip100",Number(chip)===100);
-  toggle("xmChip500",Number(chip)===500);
-  toggle("xmChip1000",Number(chip)===1000);
-  toggle("xmChip5000",Number(chip)===5000);
-  toggle("xmChip10000",Number(chip)===10000);
-
-  var fixed=[100,500,1000,5000,10000];
-  toggle("xmChipCustom",Number(chip)>0 && fixed.indexOf(Number(chip))===-1);
-
-  /* 閒/和/莊有下注就亮整格，並顯示「名稱 金額」 */
-  toggle("xmFramePlayer",Number(bets.player||0)>0);
-  toggle("xmFrameTie",Number(bets.tie||0)>0);
-  toggle("xmFrameBanker",Number(bets.banker||0)>0);
-
-  label("xmLabelPlayer","閒",bets.player);
-  label("xmLabelTie","和",bets.tie);
-  label("xmLabelBanker","莊",bets.banker);
-}
 
 
 function renderCenterResult(tl,round){
@@ -1099,6 +1053,49 @@ function renderCenterResult(tl,round){
 
   box.style.display="block";
   box.classList.add("show");
+}
+
+
+function renderBetUI(){
+  function show(id,on){
+    var el=document.getElementById(id);
+    if(el)el.classList.toggle("show",!!on);
+  }
+  function setBet(id,name,value){
+    var el=document.getElementById(id);
+    if(!el)return;
+    var n=Number(value||0);
+    if(n>0){
+      el.textContent=name+" "+n.toLocaleString("en-US",{
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      });
+      el.classList.add("show");
+    }else{
+      el.textContent="";
+      el.classList.remove("show");
+    }
+  }
+
+  /* 先全部關掉，保證籌碼只會有一個黃框 */
+  ["xmRing100","xmRing500","xmRing1000","xmRing5000","xmRing10000","xmRingCustom"]
+    .forEach(function(id){show(id,false)});
+
+  if(Number(chip)===100)show("xmRing100",true);
+  else if(Number(chip)===500)show("xmRing500",true);
+  else if(Number(chip)===1000)show("xmRing1000",true);
+  else if(Number(chip)===5000)show("xmRing5000",true);
+  else if(Number(chip)===10000)show("xmRing10000",true);
+  else if(Number(chip)>0)show("xmRingCustom",true);
+
+  /* 主下注格 */
+  show("xmMainPlayer",Number(bets.player||0)>0);
+  show("xmMainTie",Number(bets.tie||0)>0);
+  show("xmMainBanker",Number(bets.banker||0)>0);
+
+  setBet("xmTextPlayer","閒",bets.player);
+  setBet("xmTextTie","和",bets.tie);
+  setBet("xmTextBanker","莊",bets.banker);
 }
 
 function toast(msg){
@@ -1335,9 +1332,9 @@ function paintBets(){
   for(var i=0;i<all.length;i++){
     /* 不在這裡清除選取狀態，交給 refreshSelectionUI 控制 */
   }
-  refreshSelectionUI();
-  updatePlayerBetUI();
-  renderBetSelection();
+  renderBetUI();
+  renderBetUI();
+  renderBetUI();
 }
 
 function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
@@ -1492,23 +1489,20 @@ function renderNow(){
     setStatus("開牌結果",tl.roundNo);
   }
 
-  renderBetSelection();
+  renderBetUI();
   renderCenterResult(tl,round);
   lastVisualKey=visualKey;
 }
 function selectChip(v){
   var tl=getTimeline(Date.now());
-
   if(tl.phase!=="betting"){
     toast(tl.phase==="closed"?"房間休息中":"目前已封盤");
     return;
   }
-
   var n=Number(v);
   if(!(n>0))return;
-
   chip=n;
-  renderBetSelection();
+  renderBetUI();
 }
 
 function isPair(cards){
@@ -1617,7 +1611,7 @@ async function placeBet(type){
 
   currentBetRound=tl.roundNo;
   paintBets();
-  updatePlayerBetUI();
+  renderBetUI();
 }
 
 async function settleFirebaseRound(round,cycleIndex){
@@ -1687,7 +1681,7 @@ function bind(){
       }
 
       var v=Number(prompt("請輸入自訂籌碼金額"));
-      if(v>0){chip=v;renderBetSelection();}
+      if(v>0){chip=v;renderBetUI();}
       return;
     }
 
@@ -1774,11 +1768,11 @@ async function init(){
   }
 
   bind();
-  renderBetSelection();
-  updatePlayerBetUI();
+  renderBetUI();
+  renderBetUI();
 
   try{
-    refreshSelectionUI();
+    renderBetUI();
   }catch(e){}
 
   /*
