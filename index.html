@@ -1602,6 +1602,83 @@ html{
   color:#777;
 }
 
+
+/* ===== 遊戲錢包頁 ===== */
+.xm-gamewallet-page{
+  align-items:stretch!important;
+  justify-content:center!important;
+  padding:0!important;
+  background:#050505!important;
+}
+.xm-gamewallet-shell{
+  width:min(100%,1050px);
+  min-height:100vh;
+  background:linear-gradient(180deg,#0b0905,#050505 45%);
+}
+.xm-gamewallet-header{
+  height:64px;
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  border-bottom:1px solid #49391b;
+  background:#080808;
+}
+.xm-gamewallet-header h2{
+  margin:0;text-align:center;color:#f0cc68;font-size:20px;
+}
+.xm-gamewallet-back{
+  text-decoration:none;color:#f0cc68;font-size:34px;
+  display:flex;justify-content:center;align-items:center;height:100%;
+}
+.xm-gamewallet-body{padding:18px 14px 110px}
+.xm-center-wallet{
+  border:1px solid #5d4722;border-radius:15px;
+  background:#0d0b07;padding:16px;margin-bottom:16px;
+}
+.xm-center-wallet small{display:block;color:#918574;margin-bottom:5px}
+.xm-center-wallet strong{font-size:30px;color:#f1cf70}
+.xm-gamewallet-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.xm-gamewallet-box{
+  aspect-ratio:1/1;
+  min-width:0;
+  border:1px solid #5d4722;border-radius:15px;
+  background:linear-gradient(180deg,#151109,#090806);
+  color:#fff;padding:12px 7px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  text-align:center;
+}
+.xm-gamewallet-box b{font-size:16px;color:#f0ca68;margin-bottom:8px}
+.xm-gamewallet-box strong{font-size:19px;max-width:100%;overflow:hidden}
+.xm-gamewallet-box small{color:#8f8577;margin-top:6px;font-size:10px}
+.xm-wallet-transfer{
+  max-width:520px;margin:18px auto 0;border:1px solid #42341d;
+  border-radius:14px;padding:15px;background:#0b0a07;display:none;
+}
+.xm-wallet-transfer.show{display:block}
+.xm-wallet-transfer h3{margin:0 0 12px;color:#efcc69}
+.xm-wallet-transfer input{
+  width:100%;height:46px;border-radius:9px;border:1px solid #4d4028;
+  background:#050505;color:#fff;padding:0 12px;font-size:16px;
+}
+.xm-wallet-transfer-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.xm-wallet-transfer-actions button{
+  height:44px;border-radius:9px;border:1px solid #735725;background:#0c0b08;
+  color:#e8c665;font-weight:900;
+}
+.xm-wallet-transfer-actions .primary{
+  background:linear-gradient(180deg,#efd36e,#b98a2e);color:#171008;border:0
+}
+@media(max-width:480px){
+  .xm-gamewallet-grid{gap:7px}
+  .xm-gamewallet-box{padding:8px 4px}
+  .xm-gamewallet-box b{font-size:13px}
+  .xm-gamewallet-box strong{font-size:15px}
+}
+
 </style>
 </head>
 <body>
@@ -1677,7 +1754,7 @@ html{
 </div>
 
 <nav class="bottom" id="xmGlobalBottomNav">
-  <a class="navbtn navlink" id="xmNavDeposit" data-tab="deposit" href="#deposit-modal" data-transaction-entry="deposit"><span>▣</span>存款</a>
+  <a class="navbtn navlink" id="xmNavWallet" data-tab="wallet" href="#wallet-modal"><span>▣</span>錢包</a>
   <a class="navbtn navlink" id="xmHistoryNav" data-tab="history" href="#transaction-history-modal"><span>☷</span>交易紀錄</a>
   <a class="navbtn navlink active" id="xmNavHome" data-tab="home" href="#"><span>⌂</span>首頁</a>
   <a class="navbtn navlink" id="xmNavService" data-tab="service" href="#customer-service-modal"><span>♧</span>客服</a>
@@ -2886,6 +2963,43 @@ window.xmRenderTransactionHistory=render;
 </script>
 
 
+
+
+<div class="auth-target xm-gamewallet-page" id="wallet-modal">
+  <div class="xm-gamewallet-shell">
+    <div class="xm-gamewallet-header">
+      <a href="#" class="xm-gamewallet-back">‹</a>
+      <h2>錢包</h2><div></div>
+    </div>
+    <div class="xm-gamewallet-body">
+      <section class="xm-center-wallet">
+        <small>中心錢包</small>
+        <strong id="xmWalletCenterBalance">0.00</strong>
+      </section>
+
+      <section class="xm-gamewallet-grid">
+        <button type="button" class="xm-gamewallet-box" data-wallet="electronic">
+          <b>電子錢包</b><strong id="xmWalletElectronic">0.00</strong><small>點擊轉點</small>
+        </button>
+        <button type="button" class="xm-gamewallet-box" data-wallet="sports">
+          <b>體育錢包</b><strong id="xmWalletSports">0.00</strong><small>點擊轉點</small>
+        </button>
+        <button type="button" class="xm-gamewallet-box" data-wallet="baccarat">
+          <b>百家樂錢包</b><strong id="xmWalletBaccarat">0.00</strong><small>點擊轉點</small>
+        </button>
+      </section>
+
+      <section class="xm-wallet-transfer" id="xmWalletTransfer">
+        <h3 id="xmWalletTransferTitle">錢包轉點</h3>
+        <input id="xmWalletTransferAmount" type="number" min="0" step="0.01" placeholder="輸入點數">
+        <div class="xm-wallet-transfer-actions">
+          <button type="button" class="primary" id="xmWalletTransferIn">中心 → 遊戲錢包</button>
+          <button type="button" id="xmWalletTransferOut">遊戲錢包 → 中心</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
 
 <div class="auth-target xm-profile-page" id="profile-modal">
   <div class="xm-profile-shell">
@@ -5467,6 +5581,114 @@ setInterval(applyFirstDepositBonus,1200);
 setTimeout(applyFirstDepositBonus,500);
 
 window.xmApplyFirstDepositBonus=applyFirstDepositBonus;
+})();
+</script>
+
+
+<script id="xm-game-wallets-firebase-v1">
+(function(){
+"use strict";
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var selected=null;
+
+function user(){return localStorage.getItem("xm_demo_session")||""}
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+function money(v){return Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function patchRoot(values){
+  var r=await fetch(DB+"/.json",{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(values)
+  });
+  if(!r.ok)throw new Error("PATCH "+r.status);
+  return await r.json();
+}
+
+async function state(){
+  var u=user();
+  if(!u)return null;
+  var k=safeKey(u);
+  var player=await get("/players/"+k)||{id:u,balance:0};
+  var w=await get("/wallets/"+k)||{};
+  return {
+    k:k,center:Number(player.balance||0),
+    electronic:Number(w.electronic||0),
+    sports:Number(w.sports||0),
+    baccarat:Number(w.baccarat||0)
+  };
+}
+
+async function render(){
+  if(location.hash!=="#wallet-modal")return;
+  if(!user()){location.hash="login-required-modal";return}
+  try{
+    var s=await state(); if(!s)return;
+    document.getElementById("xmWalletCenterBalance").textContent=money(s.center);
+    document.getElementById("xmWalletElectronic").textContent=money(s.electronic);
+    document.getElementById("xmWalletSports").textContent=money(s.sports);
+    document.getElementById("xmWalletBaccarat").textContent=money(s.baccarat);
+  }catch(e){console.error(e)}
+}
+
+function label(w){
+  return w==="electronic"?"電子錢包":w==="sports"?"體育錢包":"百家樂錢包";
+}
+
+async function transfer(direction){
+  var amount=Math.round(Number(document.getElementById("xmWalletTransferAmount").value||0)*100)/100;
+  if(!selected||!(amount>0)){alert("請輸入轉點金額");return}
+
+  var s=await state(); if(!s)return;
+  var game=Number(s[selected]||0);
+  var center=Number(s.center||0);
+
+  if(direction==="in" && center<amount){alert("中心錢包餘額不足");return}
+  if(direction==="out" && game<amount){alert(label(selected)+"餘額不足");return}
+
+  var newCenter=direction==="in"?center-amount:center+amount;
+  var newGame=direction==="in"?game+amount:game-amount;
+
+  var updates={};
+  updates["players/"+s.k+"/balance"]=Math.round(newCenter*100)/100;
+  updates["wallets/"+s.k+"/"+selected]=Math.round(newGame*100)/100;
+
+  /*
+    只更新 players / wallets。
+    完全不寫 requests / transactions，因此不會出現在交易紀錄。
+  */
+  await patchRoot(updates);
+
+  document.getElementById("xmWalletTransferAmount").value="";
+  await render();
+
+  if(typeof window.xmSyncPlayerBalance==="function"){
+    try{window.xmSyncPlayerBalance()}catch(e){}
+  }
+}
+
+document.addEventListener("click",function(e){
+  var box=e.target.closest&&e.target.closest("[data-wallet]");
+  if(box){
+    selected=box.getAttribute("data-wallet");
+    document.getElementById("xmWalletTransferTitle").textContent=label(selected)+"轉點";
+    document.getElementById("xmWalletTransfer").classList.add("show");
+    document.getElementById("xmWalletTransferAmount").focus();
+  }
+});
+
+document.getElementById("xmWalletTransferIn").onclick=function(){transfer("in").catch(function(){alert("轉點失敗")})};
+document.getElementById("xmWalletTransferOut").onclick=function(){transfer("out").catch(function(){alert("轉點失敗")})};
+
+window.addEventListener("hashchange",render);
+window.addEventListener("focus",render);
+setInterval(function(){if(location.hash==="#wallet-modal")render()},1200);
+window.xmRenderGameWallets=render;
 })();
 </script>
 

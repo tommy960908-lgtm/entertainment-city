@@ -13,11 +13,11 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .hit.sel{outline:none!important;box-shadow:none!important;}
 .hit.locked{pointer-events:auto}
 .lobby{left:1.5%;top:1.3%;width:14%;height:6%}
-.player{left:4.5%;top:43.2%;width:29%;height:10.8%}
-.tie{left:35.3%;top:43.2%;width:29%;height:10.8%}
-.banker{left:65.2%;top:43.2%;width:30%;height:10.8%}
-.chip{top:55.1%;width:8.8%;height:7.2%;border-radius:50%}
-.c1{left:16.4%} .c2{left:26.6%} .c3{left:36.8%} .c4{left:47%} .c5{left:57.2%} .c6{left:67.4%}
+.player{left:1.9%;top:51.8%;width:32.5%;height:11.1%}
+.tie{left:34.4%;top:51.8%;width:30.6%;height:11.1%}
+.banker{left:65.0%;top:51.8%;width:33.2%;height:11.1%}
+.chip{top:63.5%;width:12.2%;height:7.5%;border-radius:50%}
+.c1{left:6.3%} .c2{left:20.5%} .c3{left:34.4%} .c4{left:48.3%} .c5{left:62.1%} .c6{left:80.0%;width:13%}
 .amount{position:absolute;z-index:14;top:50.4%;font-weight:900;color:#fff;text-shadow:0 2px 4px #000;font-size:clamp(11px,2.2vw,22px);text-align:center;pointer-events:none}
 .ap{left:4.5%;width:29%} .at{left:35.3%;width:29%} .ab{left:65.2%;width:30%}
 .status{position:absolute;z-index:15;left:50%;top:6.5%;transform:translateX(-50%);padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.82);border:1px solid #d2aa4f;color:#f5d574;font-weight:900;font-size:clamp(11px,1.8vw,18px);white-space:nowrap;pointer-events:none}
@@ -298,9 +298,9 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 
 /* 六種真正可下注區 */
-.sidebet-playerpair{left:4.3%;top:39.15%;width:29.2%;height:4.1%}
-.sidebet-lucky6{left:35.0%;top:39.15%;width:29.3%;height:4.1%}
-.sidebet-bankerpair{left:65.0%;top:39.15%;width:30.0%;height:4.1%}
+.sidebet-playerpair{left:1.9%;top:45.7%;width:34.9%;height:6.1%}
+.sidebet-lucky6{left:36.8%;top:45.7%;width:24.9%;height:6.1%}
+.sidebet-bankerpair{left:61.7%;top:45.7%;width:36.4%;height:6.1%}
 
 .side-amount{
   position:absolute;
@@ -325,22 +325,29 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 }
 
 
-.live-balance{
-  position:absolute;
-  z-index:66;
-  left:1.6%;
-  top:64.65%;
-  width:25.5%;
-  height:3.2%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#080808;
-  color:#fff;
-  font-weight:800;
-  font-size:clamp(11px,2vw,20px);
+
+
+
+.wallet-stat-overlay{
+  position:absolute;z-index:70;left:0;top:71.6%;width:28.4%;height:6.5%;
+  background:#080808;border-right:1px solid #4b3a20;
+  display:flex;flex-direction:column;justify-content:center;padding:7px 16px;
   pointer-events:none;
 }
+.wallet-stat-overlay small{color:#e2c168;font-size:clamp(9px,1.45vw,15px)}
+.wallet-stat-overlay strong{color:#fff;font-size:clamp(15px,2.4vw,25px);text-align:center;margin-top:3px}
+.wager-stat-overlay{
+  position:absolute;z-index:70;left:28.4%;top:71.6%;width:24.0%;height:6.5%;
+  background:#080808;border-right:1px solid #4b3a20;
+  display:flex;flex-direction:column;justify-content:center;padding:7px 12px;pointer-events:none;
+}
+.wager-stat-overlay small,.win-stat-overlay small{color:#e2c168;font-size:clamp(9px,1.45vw,15px)}
+.wager-stat-overlay strong,.win-stat-overlay strong{color:#fff;font-size:clamp(15px,2.4vw,25px);text-align:right;margin-top:3px}
+.win-stat-overlay{
+  position:absolute;z-index:70;left:52.4%;top:71.6%;width:22.7%;height:6.5%;
+  background:#080808;display:flex;flex-direction:column;justify-content:center;padding:7px 12px;pointer-events:none;
+}
+.win-stat-overlay strong{color:#19ad27}
 
 </style>
 </head>
@@ -369,7 +376,9 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   <div class="side-amount sa-pp" id="app"></div>
   <div class="side-amount sa-l6" id="al6"></div>
   <div class="side-amount sa-bp" id="abp"></div>
-  <div class="live-balance" id="liveBalance">10,000.00</div>
+  <div class="wallet-stat-overlay"><small>餘額</small><strong id="liveBalance">0.00</strong></div>
+  <div class="wager-stat-overlay"><small>下注金額</small><strong id="liveWager">0.00</strong></div>
+  <div class="win-stat-overlay"><small>輸贏</small><strong id="liveWin">0.00</strong></div>
   <div class="amount ap" id="ap"></div>
   <div class="amount at" id="at"></div>
   <div class="amount ab" id="ab"></div>
@@ -446,7 +455,12 @@ var RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 var table=null;
 var ticker=null;
 var lastVisualKey="";
-var balance=10000;
+var balance=0;
+var currentUser="";
+var currentUserKey="";
+var walletReady=false;
+var currentBetRound=0;
+var lastWin=0;
 var chip=100;
 var bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
 var settledRoundNo=0;
@@ -474,6 +488,58 @@ async function fbPut(path,value){
   });
   if(!r.ok)throw new Error("Firebase PUT "+r.status);
   return await r.json();
+}
+
+
+function user(){return localStorage.getItem("xm_demo_session")||""}
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+
+async function walletGet(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("GET "+r.status);
+  return await r.json();
+}
+async function walletPatch(values){
+  var r=await fetch(DB+"/.json",{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(values)
+  });
+  if(!r.ok)throw new Error("PATCH "+r.status);
+  return await r.json();
+}
+async function syncWallet(){
+  currentUser=user();
+  if(!currentUser){
+    walletReady=false;
+    balance=0;
+    paintBets();
+    return;
+  }
+  currentUserKey=safeKey(currentUser);
+  var v=await walletGet("/wallets/"+currentUserKey+"/baccarat");
+  balance=Number(v||0);
+  walletReady=true;
+  paintBets();
+}
+function betPath(roundNo){
+  return "/baccaratBets/table1/"+roundNo+"/"+currentUserKey;
+}
+async function loadRoundBet(roundNo){
+  if(!currentUserKey)return;
+  var r=await walletGet(betPath(roundNo));
+  if(!r){
+    bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
+    currentBetRound=roundNo;
+    paintBets();
+    return;
+  }
+  bets={
+    player:Number(r.player||0),tie:Number(r.tie||0),banker:Number(r.banker||0),
+    playerPair:Number(r.playerPair||0),bankerPair:Number(r.bankerPair||0),lucky6:Number(r.lucky6||0)
+  };
+  currentBetRound=roundNo;
+  paintBets();
 }
 
 function toast(msg){
@@ -691,6 +757,11 @@ function setStatus(text,roundNo){
 
 function paintBets(){
   if($("liveBalance"))$("liveBalance").textContent=fmt(balance);
+  if($("liveWager")){
+    var wt=Number(bets.player||0)+Number(bets.tie||0)+Number(bets.banker||0)+Number(bets.playerPair||0)+Number(bets.bankerPair||0)+Number(bets.lucky6||0);
+    $("liveWager").textContent=fmt(wt);
+  }
+  if($("liveWin"))$("liveWin").textContent=fmt(lastWin);
   if($("ap"))$("ap").textContent=bets.player?fmt(bets.player):"";
   if($("at"))$("at").textContent=bets.tie?fmt(bets.tie):"";
   if($("ab"))$("ab").textContent=bets.banker?fmt(bets.banker):"";
@@ -803,6 +874,36 @@ function settleBets(round){
   return Math.round(payout*100)/100;
 }
 
+
+async function settleFirebaseRound(round){
+  var rec=await walletGet(betPath(round.roundNo));
+  if(!rec || rec.settled)return;
+
+  bets={
+    player:Number(rec.player||0),tie:Number(rec.tie||0),banker:Number(rec.banker||0),
+    playerPair:Number(rec.playerPair||0),bankerPair:Number(rec.bankerPair||0),lucky6:Number(rec.lucky6||0)
+  };
+
+  var returned=settleBets(round);
+  var remoteBalance=Number(await walletGet("/wallets/"+currentUserKey+"/baccarat")||0);
+
+  rec.settled=true;
+  rec.payout=returned;
+  rec.outcome=round.outcome;
+  rec.settledAt=Date.now();
+
+  var updates={};
+  updates["wallets/"+currentUserKey+"/baccarat"]=Math.round((remoteBalance+returned)*100)/100;
+  updates["baccaratBets/table1/"+round.roundNo+"/"+currentUserKey]=rec;
+  await walletPatch(updates);
+
+  balance=Math.round((remoteBalance+returned)*100)/100;
+  var wagerTotal=Number(rec.player||0)+Number(rec.tie||0)+Number(rec.banker||0)+Number(rec.playerPair||0)+Number(rec.bankerPair||0)+Number(rec.lucky6||0);
+  lastWin=Math.round((returned-wagerTotal)*100)/100;
+  paintBets();
+  if(wagerTotal>0)toast("本局返還 "+fmt(returned));
+}
+
 function showResult(round){
   var label=round.outcome==="banker"?"莊贏":(round.outcome==="player"?"閒贏":"和局");
 
@@ -843,9 +944,9 @@ function renderNow(){
     hideResult();
     setStatus("下注中 "+tl.remain,tl.roundNo);
 
-    if(lastVisualKey && !lastVisualKey.startsWith(tl.roundNo+"|")){
-      bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
-      paintBets();
+    if(currentBetRound!==tl.roundNo && currentUserKey){
+      loadRoundBet(tl.roundNo).catch(function(){});
+      lastWin=0;
     }
   }
   else if(tl.phase==="dealing"){
@@ -863,18 +964,8 @@ function renderNow(){
     /*
       每局只結算一次，renderNow 每 200ms 跑也不會重複加錢。
     */
-    if(settledRoundNo!==round.roundNo){
-      var wagerTotal=
-        Number(bets.player||0)+Number(bets.tie||0)+Number(bets.banker||0)+
-        Number(bets.playerPair||0)+Number(bets.bankerPair||0)+Number(bets.lucky6||0);
-
-      if(wagerTotal>0){
-        var returned=settleBets(round);
-        balance=Math.round((balance+returned)*100)/100;
-        paintBets();
-        toast("本局返還 "+fmt(returned));
-      }
-
+    if(settledRoundNo!==round.roundNo && currentUserKey){
+      settleFirebaseRound(round).catch(function(e){console.error(e)});
       settledRoundNo=round.roundNo;
     }
 
@@ -895,23 +986,35 @@ function selectChip(v){
   if(n>0)chip=n;
 }
 
-function placeBet(type){
+async function placeBet(type){
   var tl=getTimeline(Date.now());
-  if(tl.phase!=="betting"){
-    toast("目前已封盤");
-    return;
-  }
+  if(tl.phase!=="betting"){toast("目前已封盤");return}
+  if(!walletReady){toast("百家樂錢包尚未載入");return}
+  if(!currentUser){toast("請先登入");return}
 
-  if(balance<chip){
-    toast("餘額不足");
-    return;
-  }
+  var amount=Number(chip||0);
+  if(!(amount>0))return;
 
-  balance-=chip;
-  bets[type]+=chip;
+  /* 每次下注前重新讀百家樂錢包，避免多裝置餘額不同步 */
+  var remoteBalance=Number(await walletGet("/wallets/"+currentUserKey+"/baccarat")||0);
+  if(remoteBalance<amount){toast("百家樂錢包餘額不足");return}
+
+  var record=await walletGet(betPath(tl.roundNo))||{
+    player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0,settled:false
+  };
+  record[type]=Math.round((Number(record[type]||0)+amount)*100)/100;
+  record.updatedAt=Date.now();
+
+  var updates={};
+  updates["wallets/"+currentUserKey+"/baccarat"]=Math.round((remoteBalance-amount)*100)/100;
+  updates["baccaratBets/table1/"+tl.roundNo+"/"+currentUserKey]=record;
+  await walletPatch(updates);
+
+  balance=Math.round((remoteBalance-amount)*100)/100;
+  bets[type]=record[type];
+  currentBetRound=tl.roundNo;
   paintBets();
 }
-
 function bind(){
   document.addEventListener("click",function(e){
     var el=e.target.closest?e.target.closest("[data-chip],#custom,[data-bet],#lobby"):null;
@@ -974,10 +1077,13 @@ async function init(){
   try{
     await ensureTable();
     bind();
-    paintBets();
+    await syncWallet();
+    var tl0=getTimeline(Date.now());
+    if(currentUserKey)await loadRoundBet(tl0.roundNo);
     renderNow();
 
     ticker=setInterval(renderNow,200);
+    setInterval(function(){syncWallet().catch(function(){})},1500);
   }catch(e){
     console.error(e);
     toast("桌台同步失敗");
