@@ -85,7 +85,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 .controls{position:fixed;z-index:30;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:7px;width:min(94vw,620px)}
 .controls button{flex:1;height:46px;border-radius:10px;border:1px solid #9b7937;background:#0a0a0a;color:#e9c75e;font-weight:900}
-.controls .phase{background:linear-gradient(#efd16c,#b8892e);color:#171008}
+.controls .phase{background:linear-gradient(#efd16c,#b8892e);color:#171008}.controls.single{width:min(42vw,260px)}
 .toast{position:fixed;z-index:50;left:50%;bottom:70px;transform:translateX(-50%);padding:10px 15px;border-radius:10px;background:rgba(0,0,0,.92);border:1px solid #d2aa4f;color:#f5d574;display:none;white-space:nowrap}
 @media(max-width:600px){.hit.sel{outline:none!important;box-shadow:none!important;}}
 
@@ -179,6 +179,65 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   appearance:none;
 }
 
+
+.real-road{
+  position:absolute;
+  z-index:22;
+  left:1.5%;
+  top:78.7%;
+  width:72.5%;
+  height:12.6%;
+  background:#fff;
+  border:1px solid #d7d7d7;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:repeat(18,1fr);
+  grid-template-rows:repeat(6,1fr);
+  pointer-events:none;
+}
+.road-cell{
+  border-right:1px solid #e0e0e0;
+  border-bottom:1px solid #e0e0e0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  min-height:0;
+}
+.road-mark{
+  width:78%;
+  aspect-ratio:1/1;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-weight:900;
+  font-size:clamp(7px,1.5vw,15px);
+  line-height:1;
+}
+.road-mark.banker{background:#d8232a}
+.road-mark.player{background:#176dcc}
+.road-mark.tie{background:#2d923f}
+.road-summary{
+  position:absolute;
+  z-index:23;
+  right:1.3%;
+  top:78.7%;
+  width:23.5%;
+  height:12.6%;
+  background:rgba(255,255,255,.97);
+  color:#222;
+  padding:5px 7px;
+  font-weight:800;
+  font-size:clamp(8px,1.5vw,14px);
+  line-height:1.55;
+  pointer-events:none;
+}
+.road-summary .b{color:#d8232a}
+.road-summary .p{color:#176dcc}
+.road-summary .t{color:#2d923f}
+
 </style>
 </head>
 <body>
@@ -224,17 +283,23 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="score-banner" id="scoreBanner"></div>
 <div class="result-banner" id="resultBanner"></div>
 
+<div class="real-road" id="realRoad"></div>
+<div class="road-summary" id="roadSummary">
+  <div class="b">莊　0</div>
+  <div class="p">閒　0</div>
+  <div class="t">和　0</div>
+  <div>總　0</div>
 </div>
 
-<div class="controls">
-  <button id="clear">清除下注</button>
-  <button class="phase" id="phaseBtn" disabled>下注中 10</button>
-  <button id="repeat">重複下注</button>
+
 </div>
+
+<div class="controls single"><button class="phase" id="phaseBtn" disabled>下注中 10</button></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+
 (function(){
 "use strict";
 
@@ -246,33 +311,37 @@ var phase="betting";
 var seconds=10;
 var roundNo=1;
 var shoe=[];
+var roadHistory=[];
+var timer=null;
 
 var SUITS=["♠","♥","♦","♣"];
 var RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
-function $(id){return document.getElementById(id)}
-function fmt(n){return Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
-function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function $(id){ return document.getElementById(id); }
+function fmt(n){ return Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function sleep(ms){ return new Promise(function(resolve){ setTimeout(resolve,ms); }); }
 
 function toast(msg){
-  $("toast").textContent=msg;
-  $("toast").style.display="block";
+  var el=$("toast");
+  if(!el)return;
+  el.textContent=msg;
+  el.style.display="block";
   clearTimeout(toast._t);
-  toast._t=setTimeout(function(){$("toast").style.display="none"},1500);
+  toast._t=setTimeout(function(){ el.style.display="none"; },1500);
 }
 
 function newShoe(){
   shoe=[];
   for(var d=0;d<8;d++){
-    for(var s=0;s<SUITS.length;s++){
-      for(var r=0;r<RANKS.length;r++){
-        shoe.push({r:RANKS[r],s:SUITS[s]});
+    for(var si=0;si<SUITS.length;si++){
+      for(var ri=0;ri<RANKS.length;ri++){
+        shoe.push({r:RANKS[ri],s:SUITS[si]});
       }
     }
   }
   for(var i=shoe.length-1;i>0;i--){
     var j=Math.floor(Math.random()*(i+1));
-    var tmp=shoe[i]; shoe[i]=shoe[j]; shoe[j]=tmp;
+    var t=shoe[i]; shoe[i]=shoe[j]; shoe[j]=t;
   }
 }
 
@@ -293,7 +362,7 @@ function total(cards){
   return n%10;
 }
 
-function shouldPlayerDraw(pt){return pt<=5}
+function shouldPlayerDraw(pt){ return pt<=5; }
 
 function shouldBankerDraw(bt,third){
   if(third===null)return bt<=5;
@@ -306,13 +375,75 @@ function shouldBankerDraw(bt,third){
   return false;
 }
 
+function totalBet(){
+  return Number(bets.player||0)+Number(bets.tie||0)+Number(bets.banker||0);
+}
 
-function makeCard(c){
+
+function renderRoad(){
+  var board=$("realRoad");
+  var summary=$("roadSummary");
+  if(!board||!summary)return;
+
+  board.innerHTML="";
+
+  /* 第一局以前完全空白；之後每局依序寫入結果 */
+  for(var i=0;i<108;i++){
+    var cell=document.createElement("div");
+    cell.className="road-cell";
+
+    if(i<roadHistory.length){
+      var result=roadHistory[i];
+      var mark=document.createElement("div");
+      mark.className="road-mark "+result;
+      mark.textContent=result==="banker"?"莊":(result==="player"?"閒":"和");
+      cell.appendChild(mark);
+    }
+    board.appendChild(cell);
+  }
+
+  var banker=0,player=0,tie=0;
+  for(var j=0;j<roadHistory.length;j++){
+    if(roadHistory[j]==="banker")banker++;
+    else if(roadHistory[j]==="player")player++;
+    else tie++;
+  }
+
+  summary.innerHTML=
+    '<div class="b">莊　'+banker+'</div>'+
+    '<div class="p">閒　'+player+'</div>'+
+    '<div class="t">和　'+tie+'</div>'+
+    '<div>總　'+roadHistory.length+'</div>';
+}
+
+function setStatus(text){
+  if($("status"))$("status").textContent="第 "+roundNo+" 局｜"+text;
+  if($("phaseBtn"))$("phaseBtn").textContent=text;
+}
+
+function paint(){
+  if($("ap"))$("ap").textContent=bets.player?fmt(bets.player):"";
+  if($("at"))$("at").textContent=bets.tie?fmt(bets.tie):"";
+  if($("ab"))$("ab").textContent=bets.banker?fmt(bets.banker):"";
+
+  var chips=document.querySelectorAll("[data-chip]");
+  for(var i=0;i<chips.length;i++){
+    chips[i].classList.remove("sel");
+  }
+
+  var zones=document.querySelectorAll("[data-bet]");
+  for(var j=0;j<zones.length;j++){
+    zones[j].classList.remove("sel");
+  }
+
+}
+
+function makeSmallCard(c){
   var wrap=document.createElement("div");
   wrap.className="bcard-wrap";
 
   var card=document.createElement("div");
-  card.className="bcard";
+  card.className="bcard flip";
 
   var back=document.createElement("div");
   back.className="bface bback";
@@ -324,251 +455,169 @@ function makeCard(c){
   card.appendChild(back);
   card.appendChild(front);
   wrap.appendChild(card);
-
-  return {wrap:wrap,card:card};
+  return wrap;
 }
 
+function clearCards(){
+  if($("pc"))$("pc").innerHTML="";
+  if($("bc"))$("bc").innerHTML="";
+}
 
-async function revealCardBig(c){
+async function revealBig(c){
   var card=$("revealCard");
   var inner=$("revealInner");
   var front=$("revealFront");
+  if(!card||!inner||!front)return;
 
   $("revealTop").textContent=c.r+c.s;
   $("revealSuit").textContent=c.s;
   $("revealBottom").textContent=c.r;
-
   front.classList.toggle("red",c.s==="♥"||c.s==="♦");
 
   card.className="reveal-card show";
+  card.style.animation="";
   inner.className="reveal-inner";
 
   await sleep(180);
   inner.classList.add("flip");
-  await sleep(620);
+  await sleep(600);
 
   card.style.animation="revealOut .24s ease-in forwards";
   await sleep(250);
 
   card.className="reveal-card";
-  card.removeAttribute("style");
+  card.style.animation="";
   inner.className="reveal-inner";
 }
 
-async function animateDealTo(side,c,index){
-  var target=side==="player"?$("pc"):$("bc");
-  var fly=index%2===0?$("fly1"):$("fly2");
-
-  fly.className="fly-card";
-  fly.style.setProperty("--dx",side==="player"?"-655%":"-390%");
-  fly.style.setProperty("--dy","100%");
-  fly.style.setProperty("--rot",side==="player"?"-5deg":"5deg");
-
-  void fly.offsetWidth;
-  fly.classList.add("animate");
-
-  await sleep(470);
-
-  fly.className="fly-card";
-
-  /* 中央放大直接翻開 */
-  await revealCardBig(c);
-
-  /* 翻完後縮回並固定在閒／莊牌區 */
-  var obj=makeCard(c);
-  target.appendChild(obj.wrap);
-  obj.card.classList.add("flip");
-  await sleep(180);
-
-  return obj;
-}
-
-function clearCards(){
-  $("pc").innerHTML="";
-  $("bc").innerHTML="";
-}
-
-function totalBet(){return bets.player+bets.tie+bets.banker}
-
-function setStatus(text){
-  $("status").textContent="第 "+roundNo+" 局｜"+text;
-  $("phaseBtn").textContent=text;
-}
-
-function paint(){
-  $("ap").textContent=bets.player?fmt(bets.player):"";
-  $("at").textContent=bets.tie?fmt(bets.tie):"";
-  $("ab").textContent=bets.banker?fmt(bets.banker):"";
-
-  var betEls=document.querySelectorAll("[data-bet]");
-  for(var i=0;i<betEls.length;i++){
-    var el=betEls[i];
-    el.classList.toggle("sel",bets[el.getAttribute("data-bet")]>0);
-    el.classList.toggle("locked",false);
+async function dealOne(side,c,index){
+  var fly=(index%2===0)?$("fly1"):$("fly2");
+  if(fly){
+    fly.className="fly-card";
+    fly.style.setProperty("--dx",side==="player"?"-655%":"-390%");
+    fly.style.setProperty("--dy","100%");
+    fly.style.setProperty("--rot",side==="player"?"-5deg":"5deg");
+    void fly.offsetWidth;
+    fly.classList.add("animate");
+    await sleep(470);
+    fly.className="fly-card";
   }
 
-  
-/* ===== 唯一下注事件控制器：避免舊事件互相搶 ===== */
+  await revealBig(c);
+
+  var target=side==="player"?$("pc"):$("bc");
+  if(target)target.appendChild(makeSmallCard(c));
+  await sleep(160);
+}
+
 function selectChip(value){
-  if(phase!=="betting")return false;
-  chip=Number(value);
-  paint();
-  return true;
+  if(phase!=="betting"){
+    toast("目前已封盤");
+    return;
+  }
+  var n=Number(value);
+  if(n>0)chip=n;
 }
 
 function placeBet(type){
   if(phase!=="betting"){
     toast("目前已封盤");
-    return false;
+    return;
   }
-
-  var amount=Number(chip||0);
-  if(!(amount>0))return false;
-
-  if(balance<amount){
+  if(balance<chip){
     toast("餘額不足");
-    return false;
+    return;
   }
-
-  balance=Math.round((balance-amount)*100)/100;
-  bets[type]=Math.round((Number(bets[type]||0)+amount)*100)/100;
+  balance=Math.round((balance-chip)*100)/100;
+  bets[type]=Math.round((Number(bets[type]||0)+chip)*100)/100;
   paint();
-  return true;
 }
 
-document.addEventListener("click",function(e){
-  var target=e.target;
+function bindClicks(){
+  document.addEventListener("click",function(e){
+    var el=e.target.closest?e.target.closest("[data-chip],#custom,[data-bet],#clear,#repeat,#lobby"):null;
+    if(!el)return;
 
-  var chipBtn=target.closest && target.closest("[data-chip]");
-  if(chipBtn){
-    e.preventDefault();
-    e.stopPropagation();
-    selectChip(chipBtn.getAttribute("data-chip"));
-    return;
-  }
-
-  var customBtn=target.closest && target.closest("#custom");
-  if(customBtn){
     e.preventDefault();
     e.stopPropagation();
 
-    if(phase!=="betting"){
-      toast("目前已封盤");
+    if(el.hasAttribute("data-chip")){
+      selectChip(el.getAttribute("data-chip"));
       return;
     }
 
-    var v=Number(prompt("請輸入自訂籌碼金額"));
-    if(v>0){
-      chip=v;
+    if(el.id==="custom"){
+      if(phase!=="betting"){ toast("目前已封盤"); return; }
+      var v=Number(prompt("請輸入自訂籌碼金額"));
+      if(v>0)chip=v;
+      return;
+    }
+
+    if(el.hasAttribute("data-bet")){
+      placeBet(el.getAttribute("data-bet"));
+      return;
+    }
+
+    if(el.id==="clear"){
+      if(phase!=="betting")return;
+      balance=Math.round((balance+totalBet())*100)/100;
+      bets={player:0,tie:0,banker:0};
       paint();
-    }
-    return;
-  }
-
-  var betBtn=target.closest && target.closest("[data-bet]");
-  if(betBtn){
-    e.preventDefault();
-    e.stopPropagation();
-    placeBet(betBtn.getAttribute("data-bet"));
-    return;
-  }
-
-  if(target.closest && target.closest("#clear")){
-    e.preventDefault();
-    if(phase!=="betting")return;
-    balance=Math.round((balance+totalBet())*100)/100;
-    bets={player:0,tie:0,banker:0};
-    paint();
-    return;
-  }
-
-  if(target.closest && target.closest("#repeat")){
-    e.preventDefault();
-    if(phase!=="betting")return;
-
-    var n=Number(last.player||0)+Number(last.tie||0)+Number(last.banker||0);
-    if(!n){
-      toast("沒有上一局下注");
       return;
     }
 
-    if(balance<n){
-      toast("餘額不足");
+    if(el.id==="repeat"){
+      if(phase!=="betting")return;
+      var n=Number(last.player||0)+Number(last.tie||0)+Number(last.banker||0);
+      if(!n){ toast("沒有上一局下注"); return; }
+      if(balance<n){ toast("餘額不足"); return; }
+      balance=Math.round((balance-n)*100)/100;
+      bets={player:Number(last.player||0),tie:Number(last.tie||0),banker:Number(last.banker||0)};
+      paint();
       return;
     }
 
-    balance=Math.round((balance-n)*100)/100;
-    bets={
-      player:Number(last.player||0),
-      tie:Number(last.tie||0),
-      banker:Number(last.banker||0)
-    };
-    paint();
-    return;
-  }
-
-  if(target.closest && target.closest("#lobby")){
-    e.preventDefault();
-    location.href="index.html";
-  }
-}, true);
+    if(el.id==="lobby"){
+      location.href="index.html";
+    }
+  },true);
+}
 
 async function runRound(){
+  if(phase!=="betting")return;
   phase="dealing";
   paint();
   setStatus("封盤・發牌中");
   last={player:bets.player,tie:bets.tie,banker:bets.banker};
-
   clearCards();
 
   var p=[];
   var b=[];
-
-  /*
-    真實百家樂發牌順序：
-    閒第一張 -> 莊第一張 -> 閒第二張 -> 莊第二張
-  */
   var c;
 
-  c=draw();
-  p.push(c);
-  await animateDealTo("player",c,0);
-
-  c=draw();
-  b.push(c);
-  await animateDealTo("banker",c,1);
-
-  c=draw();
-  p.push(c);
-  await animateDealTo("player",c,2);
-
-  c=draw();
-  b.push(c);
-  await animateDealTo("banker",c,3);
+  c=draw(); p.push(c); await dealOne("player",c,0);
+  c=draw(); b.push(c); await dealOne("banker",c,1);
+  c=draw(); p.push(c); await dealOne("player",c,2);
+  c=draw(); b.push(c); await dealOne("banker",c,3);
 
   var pt=total(p);
   var bt=total(b);
   var third=null;
 
-  /*
-    天牌直接開牌結算；
-    否則依標準第三張牌規則補牌。
-  */
   if(!(pt>=8||bt>=8)){
     if(shouldPlayerDraw(pt)){
       setStatus("閒家補牌");
       third=draw();
       p.push(third);
-      await animateDealTo("player",third,4);
+      await dealOne("player",third,4);
     }
 
     bt=total(b);
-
     if(shouldBankerDraw(bt,third)){
       setStatus("莊家補牌");
       c=draw();
       b.push(c);
-      await animateDealTo("banker",c,5);
+      await dealOne("banker",c,5);
     }
   }
 
@@ -577,10 +626,11 @@ async function runRound(){
 
   phase="revealing";
   paint();
+  if($("scoreBanner")){
+    $("scoreBanner").textContent="閒 "+pt+"  VS  "+bt+" 莊";
+    $("scoreBanner").classList.add("show");
+  }
   setStatus("開牌中");
-
-  $("scoreBanner").textContent="閒 "+pt+"  VS  "+bt+" 莊";
-  $("scoreBanner").classList.add("show");
   await sleep(700);
 
   var outcome=pt>bt?"player":(bt>pt?"banker":"tie");
@@ -588,30 +638,33 @@ async function runRound(){
 
   if(outcome==="player"&&bets.player>0)pay+=bets.player*2;
   if(outcome==="banker"&&bets.banker>0)pay+=bets.banker*1.95;
-
   if(outcome==="tie"){
     if(bets.tie>0)pay+=bets.tie*9;
     pay+=bets.player+bets.banker;
   }
 
   balance=Math.round((balance+pay)*100)/100;
-
   phase="result";
   paint();
 
+  roadHistory.push(outcome);
+  if(roadHistory.length>108)roadHistory.shift();
+  renderRoad();
+
   var label=outcome==="banker"?"莊贏":(outcome==="player"?"閒贏":"和局");
   setStatus(label+"｜閒 "+pt+"：莊 "+bt);
-  $("resultBanner").textContent=label;
-  $("resultBanner").classList.add("show");
 
-  if(totalBet()>0){
-    toast(label+"｜派彩 "+fmt(pay));
+  if($("resultBanner")){
+    $("resultBanner").textContent=label;
+    $("resultBanner").classList.add("show");
   }
+
+  if(totalBet()>0)toast(label+"｜派彩 "+fmt(pay));
 
   await sleep(4000);
 
-  $("scoreBanner").classList.remove("show");
-  $("resultBanner").classList.remove("show");
+  if($("scoreBanner"))$("scoreBanner").classList.remove("show");
+  if($("resultBanner"))$("resultBanner").classList.remove("show");
 
   bets={player:0,tie:0,banker:0};
   clearCards();
@@ -623,21 +676,28 @@ async function runRound(){
   setStatus("下注中 "+seconds);
 }
 
-setInterval(function(){
-  if(phase!=="betting")return;
-  seconds--;
-  if(seconds>0){
-    setStatus("下注中 "+seconds);
-  }else{
-    runRound();
-  }
-},1000);
+function startClock(){
+  if(timer)clearInterval(timer);
+  timer=setInterval(function(){
+    if(phase!=="betting")return;
+    seconds--;
+    if(seconds>0){
+      setStatus("下注中 "+seconds);
+    }else{
+      runRound();
+    }
+  },1000);
+}
 
 newShoe();
+renderRoad();
+bindClicks();
 paint();
 setStatus("下注中 "+seconds);
+startClock();
 
 })();
+
 </script>
 
 </body>
