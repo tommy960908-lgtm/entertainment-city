@@ -802,6 +802,74 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   opacity:0!important;
 }
 
+
+/* ===== 附加投注：閒對 / 幸運6 / 莊對 黃框＋金額 ===== */
+.xm-side-bet-box{
+  position:absolute;
+  z-index:176;
+  pointer-events:none;
+  display:none;
+  border:4px solid #ffd84a;
+  border-radius:8px;
+  box-shadow:
+    0 0 14px rgba(255,216,74,.95),
+    inset 0 0 12px rgba(255,216,74,.14);
+}
+.xm-side-bet-box.show{display:block}
+
+#xmSidePlayerPair{
+  left:1.9%;
+  top:45.75%;
+  width:34.9%;
+  height:5.95%;
+}
+#xmSideLucky6{
+  left:36.8%;
+  top:45.75%;
+  width:24.9%;
+  height:5.95%;
+}
+#xmSideBankerPair{
+  left:61.7%;
+  top:45.75%;
+  width:36.4%;
+  height:5.95%;
+}
+
+.xm-side-bet-text{
+  position:absolute;
+  z-index:177;
+  pointer-events:none;
+  display:none;
+  transform:translate(-50%,-50%);
+  padding:3px 7px;
+  border-radius:9px;
+  background:rgba(0,0,0,.80);
+  border:1px solid #ffd84a;
+  color:#ffe16b;
+  font-size:clamp(8px,1.45vw,15px);
+  font-weight:950;
+  white-space:nowrap;
+  text-shadow:0 1px 3px #000;
+}
+.xm-side-bet-text.show{display:block}
+
+#xmSideTextPlayerPair{left:18.2%;top:49.2%}
+#xmSideTextLucky6{left:49.3%;top:49.2%}
+#xmSideTextBankerPair{left:79.8%;top:49.2%}
+
+
+/* 舊版閒對／莊對／幸運6浮動黃色金額隱藏；
+   新版下注格內黃框＋金額照常顯示 */
+#bet-player-pair,
+#bet-banker-pair,
+#bet-lucky6,
+[data-bet-label="playerPair"],
+[data-bet-label="bankerPair"],
+[data-bet-label="lucky6"]{
+  display:none!important;
+}
+
 </style>
 </head>
 <body>
@@ -872,6 +940,15 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="xm-main-bet-text" id="xmTextTie"></div>
 <div class="xm-main-bet-text" id="xmTextBanker"></div>
 
+
+<div class="xm-side-bet-box" id="xmSidePlayerPair"></div>
+<div class="xm-side-bet-box" id="xmSideLucky6"></div>
+<div class="xm-side-bet-box" id="xmSideBankerPair"></div>
+
+<div class="xm-side-bet-text" id="xmSideTextPlayerPair"></div>
+<div class="xm-side-bet-text" id="xmSideTextLucky6"></div>
+<div class="xm-side-bet-text" id="xmSideTextBankerPair"></div>
+
 <div class="status" id="status">第 1 局｜下注中 10</div>
   <div class="cards pc" id="pc"></div>
   <div class="cards bc" id="bc"></div>
@@ -895,23 +972,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="bottom-nav-cover"></div>
 <div class="road-summary" id="roadSummary">
   <div class="b">莊　0</div>
-  <div class="p">閒　0</div>
-  <div class="t">和　0</div>
-  <div>總　0</div>
-</div>
-
-
-</div>
-
-
-<div class="controls single">
-  <button class="phase" id="phaseBtn" disabled>下注中</button>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-(function(){
+  <div class="p">閒　0(function(){
 "use strict";
 
 /*
@@ -1108,6 +1169,15 @@ function renderBetUI(){
   setBet("xmTextPlayer","閒",bets.player);
   setBet("xmTextTie","和",bets.tie);
   setBet("xmTextBanker","莊",bets.banker);
+
+  /* 附加投注：有下注就亮黃框並顯示格內金額 */
+  show("xmSidePlayerPair",Number(bets.playerPair||0)>0);
+  show("xmSideLucky6",Number(bets.lucky6||0)>0);
+  show("xmSideBankerPair",Number(bets.bankerPair||0)>0);
+
+  setBet("xmSideTextPlayerPair","閒對",bets.playerPair);
+  setBet("xmSideTextLucky6","幸運6",bets.lucky6);
+  setBet("xmSideTextBankerPair","莊對",bets.bankerPair);
 }
 
 function toast(msg){
@@ -1895,6 +1965,20 @@ async function init(){
   }).catch(function(e){
     console.error("百家樂錢包同步失敗",e);
     walletReady=false;
+    balance=0;
+    try{paintBets()}catch(err){}
+  });
+
+  setInterval(function(){
+    syncWallet().catch(function(e){
+      console.error("百家樂錢包同步失敗",e);
+      walletReady=false;
+    });
+  },1500);
+}
+init();
+
+})();
     balance=0;
     try{paintBets()}catch(err){}
   });
