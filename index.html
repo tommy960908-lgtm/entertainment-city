@@ -1782,6 +1782,44 @@ html{
 }
 </style>
 
+
+<style id="xm-category-final-css">
+#TABLE{
+  min-height:calc(100vh - 140px)!important;
+  padding-bottom:70px!important;
+}
+#TABLE .section-head{
+  margin-top:0!important;
+}
+
+/* 防止舊 CSS 的 target/highlight 邏輯搶走 active 樣式 */
+#xmCategoryNav .cat{
+  background:#101010!important;
+  color:#ddd!important;
+  border-color:#413725!important;
+  box-shadow:none!important;
+}
+#xmCategoryNav .cat.active{
+  background:linear-gradient(180deg,#2c220f,#12100b)!important;
+  color:#ffd76a!important;
+  border-color:#d7a93b!important;
+  box-shadow:0 0 0 2px rgba(215,169,59,.22), inset 0 0 0 1px rgba(255,215,106,.15)!important;
+}
+</style>
+
+
+
+
+
+<style id="xm-category-position-real-fix">
+#SPORT,#TABLE{
+  padding-top:18px!important;
+}
+#SPORT .section-head,#TABLE .section-head{
+  margin-top:0!important;
+}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -3856,185 +3894,7 @@ window.xmRenderTransactionHistory=render;
 
 
 
-<script id="xm-category-scrollspy-script">
-(function(){
-  "use strict";
 
-  var nav = document.getElementById("xmCategoryNav");
-  var electronic = document.getElementById("ELECTRONIC");
-  var sport = document.getElementById("SPORT");
-  var table = document.getElementById("TABLE");
-
-  if(!nav || !electronic || !sport || !table) return;
-
-  var manualLock = false;
-  var manualTarget = "";
-  var unlockTimer = null;
-
-  function activate(id){
-    nav.querySelectorAll(".cat[data-section]").forEach(function(a){
-      a.classList.toggle(
-        "active",
-        a.getAttribute("data-section") === id
-      );
-    });
-  }
-
-  function detect(){
-    if(manualLock){
-      if(manualTarget) activate(manualTarget);
-      return;
-    }
-    if(manualLock) return;
-    if(location.hash && location.hash.indexOf("-modal") !== -1) return;
-
-    var sr = (sport.querySelector(".section-head") || sport).getBoundingClientRect();
-    var tr = (table.querySelector(".section-head") || table).getBoundingClientRect();
-
-    // 百家樂標題進入畫面
-    if(tr.top <= window.innerHeight*0.42 && tr.bottom >= 0){
-      activate("TABLE");
-      return;
-    }
-
-    // 已經越過百家樂
-    if(tr.top < 0){
-      activate("TABLE");
-      return;
-    }
-
-    // 體育標題進入畫面
-    if(sr.top <= window.innerHeight*0.42 && sr.bottom >= 0){
-      activate("SPORT");
-      return;
-    }
-
-    // 已越過體育、還沒到百家樂
-    if(sr.top < 0 && tr.top > 0){
-      activate("SPORT");
-      return;
-    }
-
-    activate("ELECTRONIC");
-  }
-
-  var ticking = false;
-  function schedule(){
-    if(ticking) return;
-    ticking = true;
-
-    requestAnimationFrame(function(){
-      detect();
-      ticking = false;
-    });
-  }
-
-  function lockTo(id){
-    manualLock = true;
-    manualTarget = id;
-    activate(id);
-
-    if(unlockTimer){
-      clearTimeout(unlockTimer);
-    }
-
-    // Safari smooth scroll 通常幾百毫秒內完成，給足時間避免途中被搶色。
-    unlockTimer = setTimeout(function(){
-      manualLock = false;
-      manualTarget = "";
-      detect();
-    }, 900);
-  }
-
-  nav.addEventListener("click", function(e){
-    var link = e.target.closest && e.target.closest(".cat[data-section]");
-    if(!link) return;
-
-    var id = link.getAttribute("data-section");
-    var target = document.getElementById(id);
-    if(!target) return;
-
-    e.preventDefault();
-
-    lockTo(id);
-
-    if(id === "ELECTRONIC"){
-      /* 電子：直接回首頁最上方 */
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-    }else if(id === "SPORT"){
-      /*
-        體育：只讓「體育」標題出現在畫面上半部，
-        不把整個體育區直接推到最上面，避免百家樂同時進入畫面而搶走黃色。
-      */
-      var sportHead = target.querySelector(".section-head") || target;
-      var currentY = window.pageYOffset || 0;
-      var sportTop = sportHead.getBoundingClientRect().top + currentY;
-      var navH = nav.getBoundingClientRect().height || 0;
-
-      /*
-        體育：固定停在體育標題，不允許後續自動偵測
-        在平滑捲動途中又把分類搶成百家樂。
-      */
-      manualLock = true;
-      manualTarget = "SPORT";
-
-      if(unlockTimer){
-        clearTimeout(unlockTimer);
-        unlockTimer = null;
-      }
-
-      var desiredTop = Math.max(0, sportTop - navH - 10);
-
-      window.scrollTo({
-        top: desiredTop,
-        behavior: "smooth"
-      });
-
-      unlockTimer = setTimeout(function(){
-        manualLock = false;
-        manualTarget = "";
-        unlockTimer = null;
-        activate("SPORT");
-      }, 1400);
-    }else{
-      var top = target.getBoundingClientRect().top +
-                (window.pageYOffset || 0) -
-                (nav.getBoundingClientRect().height || 0) -
-                12;
-
-      window.scrollTo({
-        top: Math.max(0, top),
-        behavior: "smooth"
-      });
-    }
-  });
-
-  // 使用者自己手動滑動時，立即解除手動鎖定，恢復自動偵測。
-  window.addEventListener("touchstart", function(){
-    /* 點分類後的平滑捲動期間，不立刻解除 manualLock */
-  }, {passive:true});
-
-  window.addEventListener("wheel", function(){
-    if(manualLock){
-      manualLock = false;
-      manualTarget = "";
-      if(unlockTimer){
-        clearTimeout(unlockTimer);
-        unlockTimer = null;
-      }
-    }
-  }, {passive:true});
-
-  window.addEventListener("scroll", schedule, {passive:true});
-  window.addEventListener("resize", schedule);
-  window.addEventListener("load", schedule);
-
-  schedule();
-})();
-</script>
 
 
 
@@ -5999,42 +5859,66 @@ window.xmRenderGameWallets=render;
 })();
 </script>
 
-<script id="xm-category-title-top-fix">
+<script id="xm-category-controller-final">
+
 (function(){
-  function getNav(){
-    return document.getElementById("xmCategoryNav");
-  }
+  "use strict";
 
-  function scrollCategory(btn){
-    var targetId = btn.getAttribute("data-target");
-    var target = document.getElementById(targetId);
-    if(!target) return;
+  var nav=document.getElementById("xmCategoryNav");
+  if(!nav)return;
 
-    document.querySelectorAll("#xmCategoryNav .cat").forEach(function(x){
-      x.classList.toggle("active", x === btn);
-    });
+  var lockedTarget="ELECTRONIC";
 
-    var nav = getNav();
-    var navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
-    var targetTop = target.getBoundingClientRect().top + window.pageYOffset;
-
-    /* 讓分類標題剛好出現在分類按鈕列下面 */
-    var desiredTop = Math.max(0, targetTop - navBottom - 10);
-
-    window.scrollTo({
-      top: desiredTop,
-      behavior: "smooth"
+  function setActive(id){
+    nav.querySelectorAll(".cat").forEach(function(btn){
+      btn.classList.toggle("active",btn.getAttribute("data-section")===id);
     });
   }
 
-  document.addEventListener("click", function(e){
-    var btn = e.target.closest && e.target.closest("#xmCategoryNav [data-target]");
-    if(!btn) return;
+  function go(id){
+    lockedTarget=id;
+    setActive(id);
+
+    if(id==="ELECTRONIC"){
+      window.scrollTo({top:0,behavior:"smooth"});
+      return;
+    }
+
+    var section=document.getElementById(id);
+    if(!section)return;
+
+    var head=section.querySelector(".section-head")||section;
+    var absoluteTop=head.getBoundingClientRect().top+window.pageYOffset;
+
+    /*
+      分類列本身是 sticky；目標標題停在分類列正下方。
+      額外保留 6px，不再做任何體育專屬偏移。
+    */
+    var stickyTop=parseFloat(getComputedStyle(nav).top)||0;
+    var navHeight=nav.getBoundingClientRect().height||48;
+    var y=Math.max(0,absoluteTop-stickyTop-navHeight-6);
+
+    window.scrollTo({top:y,behavior:"smooth"});
+  }
+
+  nav.addEventListener("click",function(e){
+    var btn=e.target.closest&&e.target.closest(".cat[data-section]");
+    if(!btn)return;
+
     e.preventDefault();
-    e.stopImmediatePropagation();
-    scrollCategory(btn);
-  }, true);
+    e.stopPropagation();
+    if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+
+    go(btn.getAttribute("data-section"));
+  },true);
+
+  window.addEventListener("scroll",function(){
+    setActive(lockedTarget);
+  },{passive:true});
+
+  setActive("ELECTRONIC");
 })();
+
 </script>
 
 </body>
