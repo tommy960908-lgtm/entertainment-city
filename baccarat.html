@@ -520,6 +520,57 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   transform:translateX(-50%) scale(1)!important;
 }
 
+
+/* ===== 獨立開牌結果層：不干擾桌台主循環 ===== */
+.xm-final-score{
+  position:absolute;
+  z-index:180;
+  left:50%;
+  top:43.0%;
+  transform:translateX(-50%);
+  min-width:46%;
+  padding:8px 14px;
+  border-radius:14px;
+  background:linear-gradient(90deg,rgba(0,91,205,.94),rgba(20,20,20,.96) 50%,rgba(201,33,33,.94));
+  border:2px solid #e7bd55;
+  color:#fff;
+  font-size:clamp(18px,4vw,38px);
+  font-weight:950;
+  text-align:center;
+  text-shadow:0 2px 4px #000;
+  display:none;
+  pointer-events:none;
+}
+.xm-final-winner{
+  position:absolute;
+  z-index:181;
+  left:50%;
+  top:57.5%;
+  transform:translateX(-50%);
+  min-width:27%;
+  padding:9px 20px;
+  border-radius:12px;
+  background:rgba(135,0,0,.94);
+  border:2px solid #ffd36a;
+  color:#fff;
+  font-size:clamp(20px,4.5vw,40px);
+  font-weight:950;
+  text-align:center;
+  box-shadow:0 0 22px rgba(255,190,50,.45);
+  display:none;
+  pointer-events:none;
+}
+.xm-final-score.show,
+.xm-final-winner.show{display:block!important}
+
+/* 下注區必須在所有非互動視覺層上面 */
+.hit.player,.hit.tie,.hit.banker,
+.hit.sidebet-playerpair,.hit.sidebet-lucky6,.hit.sidebet-bankerpair{
+  z-index:170!important;
+  pointer-events:auto!important;
+  touch-action:manipulation;
+}
+
 </style>
 </head>
 <body>
@@ -597,6 +648,8 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="score-banner" id="scoreBanner"></div>
 <div class="result-banner" id="resultBanner"></div>
 
+<div class="xm-final-score" id="xmFinalScore"></div>
+<div class="xm-final-winner" id="xmFinalWinner"></div>
 <div class="road-cover"></div>
 <div class="real-road" id="realRoad"></div>
 <div class="bottom-nav-cover"></div>
@@ -1145,6 +1198,7 @@ function renderNow(){
     renderRoadForCurrentRound(tl.cycleIndex,0,false);
     setStatus("房間休息中 "+tl.closeRemain+" 秒",BOARD_CAPACITY);
     if($("phaseBtn"))$("phaseBtn").textContent="房間休息中 "+tl.closeRemain+" 秒";
+    renderIndependentResult(tl,null);
     lastVisualKey="closed|"+tl.cycleIndex+"|"+tl.closeRemain;
     return;
   }
@@ -1182,7 +1236,7 @@ function renderNow(){
     renderCards(round,round.sequence.length);
 
     if(settledRoundNo!==round.roundNo && currentUserKey){
-      settleFirebaseRound(round).catch(function(e){console.error(e)});
+      settleFirebaseRound(round,tl.cycleIndex).catch(function(e){console.error(e)});
       settledRoundNo=round.roundNo;
     }
 
@@ -1190,6 +1244,7 @@ function renderNow(){
     renderRoadForCurrentRound(tl.cycleIndex,tl.roundNo,true);
   }
 
+  renderIndependentResult(tl,round);
   lastVisualKey=visualKey;
 }
 function selectChip(v){
@@ -1204,6 +1259,183 @@ function selectChip(v){
 
   chip=n;
   updatePlayerBetUI();
+}
+
+
+function isPair(cards){
+  return Array.isArray(cards) &&
+         cards.length>=2 &&
+         cards[0].r===cards[1].r;
+}
+
+function settleBets(round,record){
+  var payout=0;
+
+  if(round.outcome==="player"){
+    payout += Number(record.player||0)*2;
+  }else if(round.outcome==="banker"){
+    payout += Number(record.banker||0)*2;
+  }else{
+    payout += Number(record.tie||0)*9;
+    /* 和局時莊、閒本金退回 */
+    payout += Number(record.player||0);
+    payout += Number(record.banker||0);
+  }
+
+  if(isPair(round.playerCards)){
+    payout += Number(record.playerPair||0)*12;
+  }
+
+  if(isPair(round.bankerCards)){
+    payout += Number(record.bankerPair||0)*12;
+  }
+
+  /* 幸運6：莊以6點獲勝 */
+  if(round.outcome==="banker" && Number(round.bankerTotal)===6){
+    if(round.bankerCards.length===2){
+      payout += Number(record.lucky6||0)*13;
+    }else if(round.bankerCards.length===3){
+      payout += Number(record.lucky6||0)*21;
+    }
+  }
+
+  return Math.round(payout*100)/100;
+}
+
+async function placeBet(type){
+  var tl=getTimeline(Date.now());
+
+  if(tl.phase!=="betting"){
+    toast(tl.phase==="closed"?"房間休息中":"目前已封盤");
+    return;
+  }
+
+  if(!currentUser){
+    toast("請先登入");
+    return;
+  }
+
+  if(!walletReady){
+    toast("百家樂錢包尚未載入");
+    return;
+  }
+
+  var amount=Number(chip||0);
+  if(!(amount>0))return;
+
+  var remoteBalance=Number(
+    await walletGet("/wallets/"+currentUserKey+"/baccarat") || 0
+  );
+
+  if(remoteBalance<amount){
+    toast("百家樂錢包餘額不足");
+    return;
+  }
+
+  var path="/baccaratBets/table1/cycle_"+tl.cycleIndex+
+           "/round_"+tl.roundNo+"/"+currentUserKey;
+
+  var record=await walletGet(path) || {
+    player:0,
+    tie:0,
+    banker:0,
+    playerPair:0,
+    bankerPair:0,
+    lucky6:0,
+    settled:false
+  };
+
+  record[type]=Math.round((Number(record[type]||0)+amount)*100)/100;
+  record.updatedAt=Date.now();
+
+  var updates={};
+  updates["wallets/"+currentUserKey+"/baccarat"]=
+    Math.round((remoteBalance-amount)*100)/100;
+  updates["baccaratBets/table1/cycle_"+tl.cycleIndex+
+          "/round_"+tl.roundNo+"/"+currentUserKey]=record;
+
+  await walletPatch(updates);
+
+  balance=Math.round((remoteBalance-amount)*100)/100;
+  bets={
+    player:Number(record.player||0),
+    tie:Number(record.tie||0),
+    banker:Number(record.banker||0),
+    playerPair:Number(record.playerPair||0),
+    bankerPair:Number(record.bankerPair||0),
+    lucky6:Number(record.lucky6||0)
+  };
+
+  currentBetRound=tl.roundNo;
+  paintBets();
+  updatePlayerBetUI();
+}
+
+async function settleFirebaseRound(round,cycleIndex){
+  if(!currentUserKey)return;
+
+  var path="/baccaratBets/table1/cycle_"+cycleIndex+
+           "/round_"+round.roundNo+"/"+currentUserKey;
+
+  var record=await walletGet(path);
+  if(!record || record.settled)return;
+
+  var payout=settleBets(round,record);
+  var remoteBalance=Number(
+    await walletGet("/wallets/"+currentUserKey+"/baccarat") || 0
+  );
+
+  record.settled=true;
+  record.payout=payout;
+  record.outcome=round.outcome;
+  record.settledAt=Date.now();
+
+  var updates={};
+  updates["wallets/"+currentUserKey+"/baccarat"]=
+    Math.round((remoteBalance+payout)*100)/100;
+  updates["baccaratBets/table1/cycle_"+cycleIndex+
+          "/round_"+round.roundNo+"/"+currentUserKey]=record;
+
+  await walletPatch(updates);
+
+  balance=Math.round((remoteBalance+payout)*100)/100;
+
+  var wager=
+    Number(record.player||0)+
+    Number(record.tie||0)+
+    Number(record.banker||0)+
+    Number(record.playerPair||0)+
+    Number(record.bankerPair||0)+
+    Number(record.lucky6||0);
+
+  lastWin=Math.round((payout-wager)*100)/100;
+  paintBets();
+
+  if(wager>0){
+    toast("本局返還 "+fmt(payout));
+  }
+}
+
+function renderIndependentResult(tl,round){
+  var score=document.getElementById("xmFinalScore");
+  var winner=document.getElementById("xmFinalWinner");
+  if(!score||!winner)return;
+
+  if(tl.phase==="result" && round){
+    var label=round.outcome==="banker"
+      ?"莊贏"
+      :(round.outcome==="player"?"閒贏":"和局");
+
+    score.textContent=
+      "閒 "+round.playerTotal+"　VS　"+round.bankerTotal+" 莊";
+    winner.textContent=label;
+
+    score.classList.add("show");
+    winner.classList.add("show");
+  }else{
+    score.classList.remove("show");
+    winner.classList.remove("show");
+  }
 }
 
 function bind(){
@@ -1232,7 +1464,10 @@ function bind(){
     }
 
     if(el.hasAttribute("data-bet")){
-      placeBet(el.getAttribute("data-bet"));
+      placeBet(el.getAttribute("data-bet")).catch(function(e){
+        console.error("下注失敗",e);
+        toast("下注失敗");
+      });
       return;
     }
 
