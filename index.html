@@ -1679,6 +1679,42 @@ html{
   .xm-gamewallet-box strong{font-size:15px}
 }
 
+
+/* ===== 全部金額按鈕 ===== */
+.xm-all-btn{
+  border:1px solid #8b6a29;
+  background:#0b0a07;
+  color:#f0ca67;
+  font-weight:900;
+  border-radius:9px;
+  min-height:44px;
+  padding:0 14px;
+  -webkit-tap-highlight-color:transparent;
+}
+.xm-all-btn:active{
+  transform:scale(.98);
+}
+
+.xm-wallet-transfer-inputrow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 82px;
+  gap:8px;
+  align-items:center;
+}
+.xm-wallet-transfer-inputrow input{
+  min-width:0;
+}
+
+/* 提款快捷鍵加上全部後維持四格 */
+#withdraw-modal .quick-radio-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+#xmWithdrawAll{
+  width:100%;
+  height:100%;
+  min-height:44px;
+}
+
 </style>
 </head>
 <body>
@@ -1954,6 +1990,8 @@ function openGame(name){openSheet(name,'尚未開放 敬請期待')}
 
         <input type="radio" name="withdrawQuick" id="wd5000" value="5000">
         <label for="wd5000">5,000</label>
+
+        <button type="button" class="xm-all-btn" id="xmWithdrawAll">全部</button>
       </div>
 
       <div id="xmWithdrawStatus" class="auth-status"></div>
@@ -2991,7 +3029,10 @@ window.xmRenderTransactionHistory=render;
 
       <section class="xm-wallet-transfer" id="xmWalletTransfer">
         <h3 id="xmWalletTransferTitle">錢包轉點</h3>
-        <input id="xmWalletTransferAmount" type="number" min="0" step="0.01" placeholder="輸入點數">
+        <div class="xm-wallet-transfer-inputrow">
+          <input id="xmWalletTransferAmount" type="number" min="0" step="0.01" placeholder="輸入點數">
+          <button type="button" class="xm-all-btn" id="xmWalletTransferAll">全部</button>
+        </div>
         <div class="xm-wallet-transfer-actions">
           <button type="button" class="primary" id="xmWalletTransferIn">中心 → 遊戲錢包</button>
           <button type="button" id="xmWalletTransferOut">遊戲錢包 → 中心</button>
@@ -5641,12 +5682,25 @@ function label(w){
 }
 
 async function transfer(direction){
-  var amount=Math.round(Number(document.getElementById("xmWalletTransferAmount").value||0)*100)/100;
-  if(!selected||!(amount>0)){alert("請輸入轉點金額");return}
+  var input=document.getElementById("xmWalletTransferAmount");
+  if(!selected){alert("請先選擇錢包");return}
 
   var s=await state(); if(!s)return;
   var game=Number(s[selected]||0);
   var center=Number(s.center||0);
+
+  var useAll=input && input.dataset.all==="1";
+  var amount=useAll
+    ? (direction==="in" ? center : game)
+    : Math.round(Number(input && input.value || 0)*100)/100;
+
+  amount=Math.round(Number(amount||0)*100)/100;
+
+  if(!(amount>0)){alert("可轉點餘額為0");return}
+
+  if(input){
+    input.value=amount.toFixed(2);
+  }
 
   if(direction==="in" && center<amount){alert("中心錢包餘額不足");return}
   if(direction==="out" && game<amount){alert(label(selected)+"餘額不足");return}
@@ -5665,6 +5719,7 @@ async function transfer(direction){
   await patchRoot(updates);
 
   document.getElementById("xmWalletTransferAmount").value="";
+  document.getElementById("xmWalletTransferAmount").dataset.all="";
   await render();
 
   if(typeof window.xmSyncPlayerBalance==="function"){
@@ -5678,9 +5733,43 @@ document.addEventListener("click",function(e){
     selected=box.getAttribute("data-wallet");
     document.getElementById("xmWalletTransferTitle").textContent=label(selected)+"轉點";
     document.getElementById("xmWalletTransfer").classList.add("show");
-    document.getElementById("xmWalletTransferAmount").focus();
+    var amountInput=document.getElementById("xmWalletTransferAmount");
+    amountInput.value="";
+    amountInput.dataset.all="";
+    amountInput.focus();
   }
 });
+
+
+var xmWalletAmountInput=document.getElementById("xmWalletTransferAmount");
+var xmWalletAllBtn=document.getElementById("xmWalletTransferAll");
+
+if(xmWalletAmountInput){
+  xmWalletAmountInput.addEventListener("input",function(){
+    this.dataset.all="";
+  });
+}
+
+if(xmWalletAllBtn){
+  xmWalletAllBtn.onclick=async function(){
+    if(!selected){
+      alert("請先選擇錢包");
+      return;
+    }
+
+    var s=await state();
+    if(!s)return;
+
+    /*
+      先顯示中心錢包全額作為預覽。
+      真正按「中心→遊戲」或「遊戲→中心」時，
+      transfer() 會依方向重新抓正確來源錢包的全部餘額。
+    */
+    var input=document.getElementById("xmWalletTransferAmount");
+    input.dataset.all="1";
+    input.value=Number(s.center||0).toFixed(2);
+  };
+}
 
 document.getElementById("xmWalletTransferIn").onclick=function(){transfer("in").catch(function(){alert("轉點失敗")})};
 document.getElementById("xmWalletTransferOut").onclick=function(){transfer("out").catch(function(){alert("轉點失敗")})};
@@ -5777,6 +5866,52 @@ window.xmRenderGameWallets=render;
   },true);
 
   syncBottomNav();
+})();
+</script>
+
+
+<script id="xm-withdraw-all-v1">
+(function(){
+  async function fillWithdrawAll(){
+    var input=document.getElementById("xmWithdrawAmount");
+    if(!input)return;
+
+    var amount=0;
+
+    /* 優先抓真正可提款餘額（已扣未完成返水流水鎖定） */
+    if(typeof window.xmGetWithdrawableBalance==="function"){
+      try{
+        amount=Number(await window.xmGetWithdrawableBalance()||0);
+      }catch(e){}
+    }
+
+    /* 備援：直接讀畫面上的可用餘額 */
+    if(!(amount>=0)){
+      amount=0;
+    }
+    if(amount===0){
+      var el=document.getElementById("xmWithdrawBalance");
+      if(el){
+        amount=Number(String(el.textContent||"0").replace(/,/g,""))||0;
+      }
+    }
+
+    input.value=(Math.floor(amount*100)/100).toFixed(2);
+
+    document.querySelectorAll('input[name="withdrawQuick"]').forEach(function(r){
+      r.checked=false;
+    });
+
+    input.dispatchEvent(new Event("input",{bubbles:true}));
+    input.dispatchEvent(new Event("change",{bubbles:true}));
+  }
+
+  document.addEventListener("click",function(e){
+    var btn=e.target.closest&&e.target.closest("#xmWithdrawAll");
+    if(!btn)return;
+    e.preventDefault();
+    fillWithdrawAll();
+  },true);
 })();
 </script>
 
