@@ -673,18 +673,27 @@ async function loadRoundBet(roundNo){
 function updatePlayerBetUI(){
   var fixed=[100,500,1000,5000,10000];
 
-  /* 目前選中的籌碼 */
+  /* 目前選中的籌碼：只能亮最後按到的那一顆 */
   var chipBtns=document.querySelectorAll("[data-chip]");
   for(var i=0;i<chipBtns.length;i++){
-    var n=Number(chipBtns[i].getAttribute("data-chip"));
-    chipBtns[i].classList.toggle("xm-chip-selected",n===Number(chip));
+    chipBtns[i].classList.remove("xm-chip-selected");
   }
+
   var custom=document.getElementById("custom");
-  if(custom){
-    custom.classList.toggle(
-      "xm-chip-selected",
-      Number(chip)>0 && fixed.indexOf(Number(chip))===-1
-    );
+  if(custom)custom.classList.remove("xm-chip-selected");
+
+  var selectedFixed=null;
+  for(var ci=0;ci<chipBtns.length;ci++){
+    if(Number(chipBtns[ci].getAttribute("data-chip"))===Number(chip)){
+      selectedFixed=chipBtns[ci];
+      break;
+    }
+  }
+
+  if(selectedFixed){
+    selectedFixed.classList.add("xm-chip-selected");
+  }else if(custom && Number(chip)>0){
+    custom.classList.add("xm-chip-selected");
   }
 
   /* 目前有下注的區域 */
@@ -1127,40 +1136,14 @@ function selectChip(v){
     toast(tl.phase==="closed"?"房間休息中":"目前已封盤");
     return;
   }
+
   var n=Number(v);
-  if(n>0){chip=n;refreshSelectionUI();}
-}
+  if(!(n>0))return;
 
-async function placeBet(type){
-  var tl=getTimeline(Date.now());
-  if(tl.phase!=="betting"){toast("目前已封盤");return}
-  if(!walletReady){toast("百家樂錢包尚未載入");return}
-  if(!currentUser){toast("請先登入");return}
-
-  var amount=Number(chip||0);
-  if(!(amount>0))return;
-
-  /* 每次下注前重新讀百家樂錢包，避免多裝置餘額不同步 */
-  var remoteBalance=Number(await walletGet("/wallets/"+currentUserKey+"/baccarat")||0);
-  if(remoteBalance<amount){toast("百家樂錢包餘額不足");return}
-
-  var record=await walletGet(betPath(tl.roundNo))||{
-    player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0,settled:false
-  };
-  record[type]=Math.round((Number(record[type]||0)+amount)*100)/100;
-  record.updatedAt=Date.now();
-
-  var updates={};
-  updates["wallets/"+currentUserKey+"/baccarat"]=Math.round((remoteBalance-amount)*100)/100;
-  updates["baccaratBets/table1/"+tl.roundNo+"/"+currentUserKey]=record;
-  await walletPatch(updates);
-
-  balance=Math.round((remoteBalance-amount)*100)/100;
-  bets[type]=record[type];
-  currentBetRound=tl.roundNo;
-  paintBets();
+  chip=n;
   updatePlayerBetUI();
 }
+
 function bind(){
   document.addEventListener("click",function(e){
     var el=e.target.closest?e.target.closest("[data-chip],#custom,[data-bet],#lobby"):null;
