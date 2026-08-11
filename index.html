@@ -1746,7 +1746,42 @@ html{
   #TABLE{padding-top:85px!important;}
 }
 
+
+/* 體育分類安全停靠區 */
+#SPORT .section-head{
+  scroll-margin-top:180px!important;
+}
+
+
+/* ===== 體育分類：間距縮到剛好不露出百家樂 ===== */
+#SPORT{
+  min-height:calc(100vh - 165px)!important;
+  padding-bottom:48px!important;
+}
+#SPORT .section-head{
+  scroll-margin-top:145px!important;
+}
+
+@media (display-mode:standalone), (max-height:850px){
+  #SPORT{
+    min-height:calc(100vh - 145px)!important;
+    padding-bottom:58px!important;
+  }
+}
+
 </style>
+
+<style id="xm-category-title-top-css">
+#ELECTRONIC, #SPORT, #TABLE{
+  scroll-margin-top:0!important;
+}
+#ELECTRONIC .section-head,
+#SPORT .section-head,
+#TABLE .section-head{
+  margin-top:0!important;
+}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -3846,6 +3881,10 @@ window.xmRenderTransactionHistory=render;
   }
 
   function detect(){
+    if(manualLock){
+      if(manualTarget) activate(manualTarget);
+      return;
+    }
     if(manualLock) return;
     if(location.hash && location.hash.indexOf("-modal") !== -1) return;
 
@@ -3934,13 +3973,32 @@ window.xmRenderTransactionHistory=render;
       var currentY = window.pageYOffset || 0;
       var sportTop = sportHead.getBoundingClientRect().top + currentY;
       var navH = nav.getBoundingClientRect().height || 0;
-      /* 體育標題固定停在分類列下方，不再依螢幕高度往下捲過頭 */
-      var desiredTop = Math.max(0, sportTop - navH - 18);
+
+      /*
+        體育：固定停在體育標題，不允許後續自動偵測
+        在平滑捲動途中又把分類搶成百家樂。
+      */
+      manualLock = true;
+      manualTarget = "SPORT";
+
+      if(unlockTimer){
+        clearTimeout(unlockTimer);
+        unlockTimer = null;
+      }
+
+      var desiredTop = Math.max(0, sportTop - navH - 10);
 
       window.scrollTo({
         top: desiredTop,
         behavior: "smooth"
       });
+
+      unlockTimer = setTimeout(function(){
+        manualLock = false;
+        manualTarget = "";
+        unlockTimer = null;
+        activate("SPORT");
+      }, 1400);
     }else{
       var top = target.getBoundingClientRect().top +
                 (window.pageYOffset || 0) -
@@ -3956,14 +4014,7 @@ window.xmRenderTransactionHistory=render;
 
   // 使用者自己手動滑動時，立即解除手動鎖定，恢復自動偵測。
   window.addEventListener("touchstart", function(){
-    if(manualLock){
-      manualLock = false;
-      manualTarget = "";
-      if(unlockTimer){
-        clearTimeout(unlockTimer);
-        unlockTimer = null;
-      }
-    }
+    /* 點分類後的平滑捲動期間，不立刻解除 manualLock */
   }, {passive:true});
 
   window.addEventListener("wheel", function(){
@@ -5945,6 +5996,44 @@ window.xmRenderGameWallets=render;
     e.preventDefault();
     fillWithdrawAll();
   },true);
+})();
+</script>
+
+<script id="xm-category-title-top-fix">
+(function(){
+  function getNav(){
+    return document.getElementById("xmCategoryNav");
+  }
+
+  function scrollCategory(btn){
+    var targetId = btn.getAttribute("data-target");
+    var target = document.getElementById(targetId);
+    if(!target) return;
+
+    document.querySelectorAll("#xmCategoryNav .cat").forEach(function(x){
+      x.classList.toggle("active", x === btn);
+    });
+
+    var nav = getNav();
+    var navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+    var targetTop = target.getBoundingClientRect().top + window.pageYOffset;
+
+    /* 讓分類標題剛好出現在分類按鈕列下面 */
+    var desiredTop = Math.max(0, targetTop - navBottom - 10);
+
+    window.scrollTo({
+      top: desiredTop,
+      behavior: "smooth"
+    });
+  }
+
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest && e.target.closest("#xmCategoryNav [data-target]");
+    if(!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    scrollCategory(btn);
+  }, true);
 })();
 </script>
 
