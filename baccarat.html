@@ -674,7 +674,15 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 </div>
 
-<div class="controls single"><button class="phase" id="phaseBtn" di(function(){
+
+<div class="controls single">
+  <button class="phase" id="phaseBtn" disabled>下注中</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
 "use strict";
 
 /*
@@ -1562,17 +1570,7 @@ async function init(){
 }
 init();
 
-})();ror("百家樂錢包同步失敗",e);
-      walletReady=false;
-    });
-  },1500);
-}
-init();
-
 })();
-
-
-
 </script>
 
 </body>
