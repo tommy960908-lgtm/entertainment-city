@@ -1561,6 +1561,73 @@ function settleBets(round,record){
   return Math.round(payout*100)/100;
 }
 
+
+async function consumeRebateTurnover(amount){
+  if(!currentUserKey)return;
+
+  amount=Math.max(0,Number(amount||0));
+  if(!(amount>0))return;
+
+  try{
+    var state=await walletGet("/rebateState/"+currentUserKey) || {
+      locked:0,
+      turnover:0
+    };
+
+    var locked=Math.max(0,Number(state.locked||0));
+    var turnover=Math.max(0,Number(state.turnover||0));
+
+    /* 沒有返水流水需求就不用處理 */
+    if(!(turnover>0) && !(locked>0))return;
+
+    /*
+      1倍流水：
+      每成功下注1點，就完成1點流水。
+      輸贏不影響流水，只看實際下注額。
+    */
+    turnover=Math.max(
+      0,
+      Math.round((turnover-amount)*100)/100
+    );
+
+    /*
+      locked 代表尚未完成流水而不可提款的返水額。
+      同樣依已完成的下注額逐點解鎖。
+    */
+    locked=Math.max(
+      0,
+      Math.round((locked-amount)*100)/100
+    );
+
+    if(turnover<=0){
+      turnover=0;
+      locked=0;
+    }
+
+    state.turnover=turnover;
+    state.locked=locked;
+    state.updatedAt=Date.now();
+
+    var updates={};
+    updates["rebateState/"+currentUserKey]=state;
+    await walletPatch(updates);
+
+    /* 同步本機，玩家回主頁後提款頁可以立即讀到最新狀態 */
+    if(currentUser){
+      localStorage.setItem(
+        "xm_rebate_turnover_"+currentUser,
+        String(turnover)
+      );
+      localStorage.setItem(
+        "xm_rebate_locked_"+currentUser,
+        String(locked)
+      );
+    }
+  }catch(e){
+    console.error("返水流水同步失敗",e);
+  }
+}
+
 async function placeBet(type){
   var tl=getTimeline(Date.now());
 
@@ -1614,6 +1681,12 @@ async function placeBet(type){
           "/round_"+tl.roundNo+"/"+currentUserKey]=record;
 
   await walletPatch(updates);
+
+  /*
+    下注已成功才計入返水1倍流水。
+    下注失敗/餘額不足不計流水。
+  */
+  await consumeRebateTurnover(amount);
 
   balance=Math.round((remoteBalance-amount)*100)/100;
   bets={
