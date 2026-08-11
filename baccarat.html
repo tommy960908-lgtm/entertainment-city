@@ -20,22 +20,7 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .c1{left:6.3%} .c2{left:20.5%} .c3{left:34.4%} .c4{left:48.3%} .c5{left:62.1%} .c6{left:80.0%;width:13%}
 .amount{position:absolute;z-index:14;top:50.4%;font-weight:900;color:#fff;text-shadow:0 2px 4px #000;font-size:clamp(11px,2.2vw,22px);text-align:center;pointer-events:none}
 .ap{left:4.5%;width:29%} .at{left:35.3%;width:29%} .ab{left:65.2%;width:30%}
-.status{
-  position:absolute;
-  z-index:90;
-  left:50%;
-  top:18%;
-  transform:translateX(-50%);
-  padding:8px 16px;
-  border-radius:18px;
-  background:rgba(0,0,0,.82);
-  border:1px solid #d2aa4f;
-  color:#f5d574;
-  font-weight:900;
-  font-size:clamp(11px,1.8vw,18px);
-  white-space:nowrap;
-  pointer-events:none!important;
-}
+.status{position:absolute;z-index:15;left:50%;top:6.5%;transform:translateX(-50%);padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.82);border:1px solid #d2aa4f;color:#f5d574;font-weight:900;font-size:clamp(11px,1.8vw,18px);white-space:nowrap;pointer-events:none}
 .cards{
   position:absolute;
   z-index:15;
@@ -397,21 +382,22 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .room-closed-mask.show{display:block}
 
 
-/* ===== 開牌結果強制顯示 ===== */
-.score-banner{
-  z-index:95!important;
+/* ===== 最新版：只調整局數 / 下注狀態位置 ===== */
+.status{
+  left:50%!important;
+  top:18%!important;
+  transform:translateX(-50%)!important;
+  z-index:100!important;
+  white-space:nowrap!important;
 }
-.score-banner.show{
-  display:block!important;
-  opacity:1!important;
-}
-.result-banner{
-  z-index:96!important;
-}
+
+/* 開牌結果永遠在最上層 */
+.score-banner{z-index:101!important}
+.result-banner{z-index:102!important}
+.score-banner.show,
 .result-banner.show{
   display:block!important;
   opacity:1!important;
-  transform:translateX(-50%) scale(1)!important;
 }
 
 </style>
@@ -473,6 +459,24 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 <div class="road-cover"></div>
 <div class="real-road" id="realRoad"></div>
 <div class="bottom-nav-cover"></div>
+<div class="road-summary" id="roadSummary">
+  <div class="b">莊　0</div>
+  <div class="p">閒　0</div>
+  <div class="t">和　0</div>
+  <div>總　0</div>
+</div>
+
+
+</div>
+
+<div class="controls single"><button class="phase" id="phaseBtn" disabled>下注中 10</button></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+
 (function(){
 "use strict";
 
@@ -884,25 +888,22 @@ function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
 function showResult(round){
   if(!round)return;
 
-  var label=round.outcome==="banker"
-    ?"莊贏"
-    :(round.outcome==="player"?"閒贏":"和局");
-
+  var label=round.outcome==="banker"?"莊贏":(round.outcome==="player"?"閒贏":"和局");
   var score=$("scoreBanner");
   var result=$("resultBanner");
 
   if(score){
     score.textContent="閒 "+round.playerTotal+"  VS  "+round.bankerTotal+" 莊";
     score.classList.add("show");
-    score.style.opacity="1";
     score.style.display="block";
+    score.style.opacity="1";
   }
 
   if(result){
     result.textContent=label;
     result.classList.add("show");
-    result.style.opacity="1";
     result.style.display="block";
+    result.style.opacity="1";
   }
 
   setStatus(label+"｜閒 "+round.playerTotal+"：莊 "+round.bankerTotal,round.roundNo);
@@ -914,22 +915,16 @@ function hideResult(){
 
   if(score){
     score.classList.remove("show");
-    score.style.opacity="0";
     score.style.display="none";
+    score.style.opacity="0";
   }
-
   if(result){
     result.classList.remove("show");
-    result.style.opacity="0";
     result.style.display="none";
+    result.style.opacity="0";
   }
 }
 
-/*
-  核心：
-  每次刷新只根據「目前時間」直接畫出應該看到的狀態。
-  不會重新播放已完成的牌動畫。
-*/
 function renderNow(){
   if(!table || !table.epoch || !table.seed){
     table={
@@ -1179,24 +1174,6 @@ async function init(){
       }
     }catch(e){
       console.error("讀取本局下注失敗",e);
-    }
-  }).catch(function(e){
-    console.error("百家樂錢包同步失敗",e);
-    walletReady=false;
-    balance=0;
-    try{paintBets()}catch(err){}
-  });
-
-  setInterval(function(){
-    syncWallet().catch(function(e){
-      console.error("百家樂錢包同步失敗",e);
-      walletReady=false;
-    });
-  },1500);
-}
-init();
-
-})();",e);
     }
   }).catch(function(e){
     console.error("百家樂錢包同步失敗",e);
