@@ -5867,7 +5867,8 @@ window.xmRenderGameWallets=render;
   var nav=document.getElementById("xmCategoryNav");
   if(!nav)return;
 
-  var lockedTarget="ELECTRONIC";
+  var clicking=false;
+  var clickTimer=null;
 
   function setActive(id){
     nav.querySelectorAll(".cat").forEach(function(btn){
@@ -5875,48 +5876,78 @@ window.xmRenderGameWallets=render;
     });
   }
 
+  function sectionY(id){
+    var el=document.getElementById(id);
+    if(!el)return 0;
+    var head=el.querySelector(".section-head")||el;
+    return head.getBoundingClientRect().top+window.pageYOffset;
+  }
+
+  function detectByScroll(){
+    if(clicking)return;
+
+    var y=window.pageYOffset;
+    var navH=nav.getBoundingClientRect().height||48;
+    var probe=y+navH+90;
+
+    var sport=sectionY("SPORT");
+    var table=sectionY("TABLE");
+
+    if(probe>=table){
+      setActive("TABLE");
+    }else if(probe>=sport){
+      setActive("SPORT");
+    }else{
+      setActive("ELECTRONIC");
+    }
+  }
+
   function go(id){
-    lockedTarget=id;
+    clicking=true;
     setActive(id);
 
-    if(id==="ELECTRONIC"){
-      window.scrollTo({top:0,behavior:"smooth"});
-      return;
+    var y=0;
+    if(id!=="ELECTRONIC"){
+      var section=document.getElementById(id);
+      if(section){
+        var head=section.querySelector(".section-head")||section;
+        var absoluteTop=head.getBoundingClientRect().top+window.pageYOffset;
+        var navH=nav.getBoundingClientRect().height||48;
+        var stickyTop=parseFloat(getComputedStyle(nav).top)||0;
+        y=Math.max(0,absoluteTop-navH-stickyTop-6);
+      }
     }
 
-    var section=document.getElementById(id);
-    if(!section)return;
-
-    var head=section.querySelector(".section-head")||section;
-    var absoluteTop=head.getBoundingClientRect().top+window.pageYOffset;
-
-    /*
-      分類列本身是 sticky；目標標題停在分類列正下方。
-      額外保留 6px，不再做任何體育專屬偏移。
-    */
-    var stickyTop=parseFloat(getComputedStyle(nav).top)||0;
-    var navHeight=nav.getBoundingClientRect().height||48;
-    var y=Math.max(0,absoluteTop-stickyTop-navHeight-6);
-
     window.scrollTo({top:y,behavior:"smooth"});
+
+    clearTimeout(clickTimer);
+    clickTimer=setTimeout(function(){
+      clicking=false;
+      detectByScroll();
+    },900);
   }
 
   nav.addEventListener("click",function(e){
     var btn=e.target.closest&&e.target.closest(".cat[data-section]");
     if(!btn)return;
-
     e.preventDefault();
     e.stopPropagation();
     if(e.stopImmediatePropagation)e.stopImmediatePropagation();
-
     go(btn.getAttribute("data-section"));
   },true);
 
+  var ticking=false;
   window.addEventListener("scroll",function(){
-    setActive(lockedTarget);
+    if(ticking)return;
+    ticking=true;
+    requestAnimationFrame(function(){
+      ticking=false;
+      detectByScroll();
+    });
   },{passive:true});
 
-  setActive("ELECTRONIC");
+  window.addEventListener("resize",detectByScroll);
+  detectByScroll();
 })();
 
 </script>
