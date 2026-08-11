@@ -9,9 +9,9 @@
 html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}
 .wrap{position:relative;width:min(100vw,1024px);margin:0 auto;background:#000;overflow:hidden}
 .base{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;pointer-events:none}
-.hit{position:absolute;z-index:10;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.hit.sel{outline:3px solid #ffd65a;box-shadow:inset 0 0 24px rgba(255,214,90,.28);border-radius:8px}
-.hit.locked{pointer-events:none}
+.hit{position:absolute;z-index:60;border:0;background:transparent!important;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto;touch-action:manipulation}
+.hit.sel{outline:none!important;box-shadow:none!important;}
+.hit.locked{pointer-events:auto}
 .lobby{left:1.5%;top:1.3%;width:14%;height:6%}
 .player{left:4.5%;top:43.2%;width:29%;height:10.8%}
 .tie{left:35.3%;top:43.2%;width:29%;height:10.8%}
@@ -87,7 +87,98 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .controls button{flex:1;height:46px;border-radius:10px;border:1px solid #9b7937;background:#0a0a0a;color:#e9c75e;font-weight:900}
 .controls .phase{background:linear-gradient(#efd16c,#b8892e);color:#171008}
 .toast{position:fixed;z-index:50;left:50%;bottom:70px;transform:translateX(-50%);padding:10px 15px;border-radius:10px;background:rgba(0,0,0,.92);border:1px solid #d2aa4f;color:#f5d574;display:none;white-space:nowrap}
-@media(max-width:600px){.hit.sel{outline-width:2px}}
+@media(max-width:600px){.hit.sel{outline:none!important;box-shadow:none!important;}}
+
+.reveal-layer{
+  position:absolute; inset:0; z-index:40;
+  pointer-events:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.reveal-card{
+  width:15%; min-width:88px; max-width:150px;
+  aspect-ratio:.68/1;
+  perspective:900px;
+  opacity:0;
+  transform:translateY(45px) scale(.72);
+}
+.reveal-card.show{
+  animation:revealIn .28s ease-out forwards;
+}
+.reveal-inner{
+  position:relative; width:100%; height:100%;
+  transform-style:preserve-3d;
+  transition:transform .48s cubic-bezier(.2,.75,.2,1);
+}
+.reveal-inner.flip{transform:rotateY(180deg)}
+.reveal-face{
+  position:absolute; inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  border-radius:10px;
+  box-shadow:0 12px 35px rgba(0,0,0,.55);
+}
+.reveal-back{
+  background:repeating-linear-gradient(45deg,#173f88 0 7px,#0f2b63 7px 14px);
+  border:3px solid #fff;
+}
+.reveal-front{
+  transform:rotateY(180deg);
+  background:#fff; color:#111; border:2px solid #ddd;
+  font-family:Georgia,serif; font-weight:900;
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:8px;
+}
+.reveal-front.red{color:#c6252d}
+.reveal-r{font-size:clamp(18px,4vw,34px);line-height:1}
+.reveal-s{font-size:clamp(30px,7vw,58px);text-align:center;line-height:1}
+@keyframes revealIn{
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes revealOut{
+  from{opacity:1;transform:translateY(0) scale(1)}
+  to{opacity:0;transform:translateY(-25px) scale(.7)}
+}
+.score-banner{
+  position:absolute; z-index:42; left:50%; top:38%;
+  transform:translateX(-50%);
+  padding:9px 18px; border-radius:14px;
+  background:linear-gradient(90deg,#0e54a2,#151515 48%,#a52222);
+  border:1px solid #d7b24c;
+  color:#fff; font-weight:950;
+  font-size:clamp(18px,4vw,36px);
+  text-shadow:0 2px 4px #000;
+  opacity:0; pointer-events:none;
+}
+.score-banner.show{opacity:1}
+.result-banner{
+  position:absolute; z-index:43; left:50%; top:57%;
+  transform:translateX(-50%) scale(.8);
+  padding:10px 24px; border-radius:12px;
+  background:rgba(160,0,0,.88); border:1px solid #ffcf72;
+  color:#fff; font-weight:950;
+  font-size:clamp(20px,4vw,38px);
+  text-shadow:0 0 8px rgba(255,220,100,.55);
+  opacity:0; pointer-events:none;
+}
+.result-banner.show{
+  animation:resultPop .22s ease-out forwards;
+}
+@keyframes resultPop{
+  to{opacity:1;transform:translateX(-50%) scale(1)}
+}
+
+
+.hit:focus,
+.hit:focus-visible,
+.hit:active{
+  outline:none!important;
+  box-shadow:none!important;
+}
+.hit{
+  -webkit-appearance:none;
+  appearance:none;
+}
+
 </style>
 </head>
 <body>
@@ -117,6 +208,22 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   <div class="status" id="status">第 1 局｜下注中 10</div>
   <div class="cards pc" id="pc"></div>
   <div class="cards bc" id="bc"></div>
+
+<div class="reveal-layer" id="revealLayer">
+  <div class="reveal-card" id="revealCard">
+    <div class="reveal-inner" id="revealInner">
+      <div class="reveal-face reveal-back"></div>
+      <div class="reveal-face reveal-front" id="revealFront">
+        <div class="reveal-r" id="revealTop"></div>
+        <div class="reveal-s" id="revealSuit"></div>
+        <div class="reveal-r" id="revealBottom" style="text-align:right"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="score-banner" id="scoreBanner"></div>
+<div class="result-banner" id="resultBanner"></div>
+
 </div>
 
 <div class="controls">
@@ -221,14 +328,37 @@ function makeCard(c){
   return {wrap:wrap,card:card};
 }
 
+
+async function revealCardBig(c){
+  var card=$("revealCard");
+  var inner=$("revealInner");
+  var front=$("revealFront");
+
+  $("revealTop").textContent=c.r+c.s;
+  $("revealSuit").textContent=c.s;
+  $("revealBottom").textContent=c.r;
+
+  front.classList.toggle("red",c.s==="♥"||c.s==="♦");
+
+  card.className="reveal-card show";
+  inner.className="reveal-inner";
+
+  await sleep(180);
+  inner.classList.add("flip");
+  await sleep(620);
+
+  card.style.animation="revealOut .24s ease-in forwards";
+  await sleep(250);
+
+  card.className="reveal-card";
+  card.removeAttribute("style");
+  inner.className="reveal-inner";
+}
+
 async function animateDealTo(side,c,index){
   var target=side==="player"?$("pc"):$("bc");
   var fly=index%2===0?$("fly1"):$("fly2");
 
-  /*
-    牌從右上牌靴位置飛到閒／莊牌區。
-    player 往左飛，banker 稍微往中間。
-  */
   fly.className="fly-card";
   fly.style.setProperty("--dx",side==="player"?"-655%":"-390%");
   fly.style.setProperty("--dy","100%");
@@ -239,17 +369,16 @@ async function animateDealTo(side,c,index){
 
   await sleep(470);
 
-  var obj=makeCard(c);
-  target.appendChild(obj.wrap);
-
   fly.className="fly-card";
 
-  /*
-    牌先保持背面，短暫停一下後再翻開。
-  */
-  await sleep(180);
+  /* 中央放大直接翻開 */
+  await revealCardBig(c);
+
+  /* 翻完後縮回並固定在閒／莊牌區 */
+  var obj=makeCard(c);
+  target.appendChild(obj.wrap);
   obj.card.classList.add("flip");
-  await sleep(430);
+  await sleep(180);
 
   return obj;
 }
@@ -275,73 +404,114 @@ function paint(){
   for(var i=0;i<betEls.length;i++){
     var el=betEls[i];
     el.classList.toggle("sel",bets[el.getAttribute("data-bet")]>0);
-    el.classList.toggle("locked",phase!=="betting");
+    el.classList.toggle("locked",false);
   }
 
-  var chipEls=document.querySelectorAll("[data-chip]");
-  for(var j=0;j<chipEls.length;j++){
-    var c=chipEls[j];
-    c.classList.toggle("sel",Number(c.getAttribute("data-chip"))===chip);
-    c.classList.toggle("locked",phase!=="betting");
-  }
-
-  $("custom").classList.toggle("locked",phase!=="betting");
-  $("clear").disabled=phase!=="betting";
-  $("repeat").disabled=phase!=="betting";
-}
-
-var chipEls=document.querySelectorAll("[data-chip]");
-for(var i=0;i<chipEls.length;i++){
-  chipEls[i].addEventListener("click",function(){
-    if(phase!=="betting")return;
-    chip=Number(this.getAttribute("data-chip"));
-    paint();
-  });
-}
-
-$("custom").addEventListener("click",function(){
-  if(phase!=="betting")return;
-  var v=Number(prompt("請輸入自訂籌碼金額"));
-  if(v>0){
-    chip=v;
-    var cs=document.querySelectorAll("[data-chip]");
-    for(var i=0;i<cs.length;i++)cs[i].classList.remove("sel");
-    $("custom").classList.add("sel");
-  }
-});
-
-var betEls=document.querySelectorAll("[data-bet]");
-for(var b=0;b<betEls.length;b++){
-  betEls[b].addEventListener("click",function(){
-    if(phase!=="betting")return;
-    if(balance<chip){toast("餘額不足");return}
-    balance-=chip;
-    var type=this.getAttribute("data-bet");
-    bets[type]+=chip;
-    paint();
-  });
-}
-
-$("clear").addEventListener("click",function(){
-  if(phase!=="betting")return;
-  balance+=totalBet();
-  bets={player:0,tie:0,banker:0};
+  
+/* ===== 唯一下注事件控制器：避免舊事件互相搶 ===== */
+function selectChip(value){
+  if(phase!=="betting")return false;
+  chip=Number(value);
   paint();
-});
+  return true;
+}
 
-$("repeat").addEventListener("click",function(){
-  if(phase!=="betting")return;
-  var n=last.player+last.tie+last.banker;
-  if(!n){toast("沒有上一局下注");return}
-  if(balance<n){toast("餘額不足");return}
-  balance-=n;
-  bets={player:last.player,tie:last.tie,banker:last.banker};
+function placeBet(type){
+  if(phase!=="betting"){
+    toast("目前已封盤");
+    return false;
+  }
+
+  var amount=Number(chip||0);
+  if(!(amount>0))return false;
+
+  if(balance<amount){
+    toast("餘額不足");
+    return false;
+  }
+
+  balance=Math.round((balance-amount)*100)/100;
+  bets[type]=Math.round((Number(bets[type]||0)+amount)*100)/100;
   paint();
-});
+  return true;
+}
 
-$("lobby").addEventListener("click",function(){
-  location.href="index.html";
-});
+document.addEventListener("click",function(e){
+  var target=e.target;
+
+  var chipBtn=target.closest && target.closest("[data-chip]");
+  if(chipBtn){
+    e.preventDefault();
+    e.stopPropagation();
+    selectChip(chipBtn.getAttribute("data-chip"));
+    return;
+  }
+
+  var customBtn=target.closest && target.closest("#custom");
+  if(customBtn){
+    e.preventDefault();
+    e.stopPropagation();
+
+    if(phase!=="betting"){
+      toast("目前已封盤");
+      return;
+    }
+
+    var v=Number(prompt("請輸入自訂籌碼金額"));
+    if(v>0){
+      chip=v;
+      paint();
+    }
+    return;
+  }
+
+  var betBtn=target.closest && target.closest("[data-bet]");
+  if(betBtn){
+    e.preventDefault();
+    e.stopPropagation();
+    placeBet(betBtn.getAttribute("data-bet"));
+    return;
+  }
+
+  if(target.closest && target.closest("#clear")){
+    e.preventDefault();
+    if(phase!=="betting")return;
+    balance=Math.round((balance+totalBet())*100)/100;
+    bets={player:0,tie:0,banker:0};
+    paint();
+    return;
+  }
+
+  if(target.closest && target.closest("#repeat")){
+    e.preventDefault();
+    if(phase!=="betting")return;
+
+    var n=Number(last.player||0)+Number(last.tie||0)+Number(last.banker||0);
+    if(!n){
+      toast("沒有上一局下注");
+      return;
+    }
+
+    if(balance<n){
+      toast("餘額不足");
+      return;
+    }
+
+    balance=Math.round((balance-n)*100)/100;
+    bets={
+      player:Number(last.player||0),
+      tie:Number(last.tie||0),
+      banker:Number(last.banker||0)
+    };
+    paint();
+    return;
+  }
+
+  if(target.closest && target.closest("#lobby")){
+    e.preventDefault();
+    location.href="index.html";
+  }
+}, true);
 
 async function runRound(){
   phase="dealing";
@@ -408,6 +578,9 @@ async function runRound(){
   phase="revealing";
   paint();
   setStatus("開牌中");
+
+  $("scoreBanner").textContent="閒 "+pt+"  VS  "+bt+" 莊";
+  $("scoreBanner").classList.add("show");
   await sleep(700);
 
   var outcome=pt>bt?"player":(bt>pt?"banker":"tie");
@@ -428,12 +601,17 @@ async function runRound(){
 
   var label=outcome==="banker"?"莊贏":(outcome==="player"?"閒贏":"和局");
   setStatus(label+"｜閒 "+pt+"：莊 "+bt);
+  $("resultBanner").textContent=label;
+  $("resultBanner").classList.add("show");
 
   if(totalBet()>0){
     toast(label+"｜派彩 "+fmt(pay));
   }
 
   await sleep(4000);
+
+  $("scoreBanner").classList.remove("show");
+  $("resultBanner").classList.remove("show");
 
   bets={player:0,tie:0,banker:0};
   clearCards();
