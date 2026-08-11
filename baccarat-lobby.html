@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>XM CASINO 百家樂大廳</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#050505;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}
+body{min-height:100vh;background:
+radial-gradient(circle at 50% -10%,#2a1b06 0,#0b0905 25%,#030303 68%);
+padding-bottom:30px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.96);border-bottom:1px solid #5c4520;padding:calc(env(safe-area-inset-top) + 10px) 14px 12px}
+.toprow{display:flex;align-items:center;gap:12px}
+.back{width:42px;height:42px;border-radius:12px;border:1px solid #7c5a24;background:#0b0a08;color:#f0cb69;font-size:25px}
+.brand{flex:1}
+.brand h1{margin:0;color:#f1cf72;font-size:22px;letter-spacing:1px}
+.brand small{color:#8f8373}
+.wallet{text-align:right}
+.wallet small{display:block;color:#998a76;font-size:11px}
+.wallet strong{color:#f4d475;font-size:18px}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow:auto}
+.tab{white-space:nowrap;border:1px solid #4d3c20;border-radius:18px;padding:7px 13px;color:#bca16a;background:#0c0b08;font-size:13px}
+.tab.active{background:#e9c65f;color:#161006;border-color:#e9c65f;font-weight:800}
+.container{max-width:980px;margin:0 auto;padding:14px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 12px}
+.section-title h2{margin:0;font-size:18px;color:#f3d071}
+.section-title span{font-size:12px;color:#847865}
+.room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.room-card{padding:0;border:1px solid #6d542a;border-radius:13px;background:#0b0a08;color:#fff;overflow:hidden;text-align:left;box-shadow:0 5px 18px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent}
+.room-card:active{transform:scale(.985)}
+.room-top{height:35px;padding:0 9px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#1c170f,#0e0c08);color:#e3c274;font-size:12px;border-bottom:1px solid #4d3c20}
+.room-round{color:#9c917f}
+.room-main{height:130px;display:grid;grid-template-columns:34% 66%;background:#f7f7f2}
+.dealer{position:relative;background:linear-gradient(180deg,#2d1f16,#111);display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid #aa9b82}
+.dealer-head{width:55px;height:55px;border-radius:50%;background:linear-gradient(#f2d37a,#9a6d1f);color:#22180c;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 3px 12px rgba(0,0,0,.4)}
+.dealer-name{margin-top:8px;background:#d4b66d;color:#251a0b;padding:3px 7px;font-size:11px}
+.mini-road{position:relative;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(6,1fr);background:white}
+.mini-cell{border-right:1px solid #dedede;border-bottom:1px solid #dedede;display:flex;align-items:center;justify-content:center}
+.dot{width:72%;aspect-ratio:1/1;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:900}
+.dot.banker{background:#d92930} .dot.player{background:#2870c8} .dot.tie{background:#2d9a48}
+.room-bottom{min-height:34px;padding:0 9px;display:flex;align-items:center;gap:6px;color:#8bc88c;font-size:11px}
+.room-bottom b{margin-left:auto;color:#e8c66c;font-size:11px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#47b852;box-shadow:0 0 7px #47b852}
+.notice{margin-top:14px;padding:13px;border:1px solid #392d1b;border-radius:12px;background:#090806;color:#9c8d76;font-size:12px;line-height:1.6}
+@media(max-width:520px){
+  .room-main{height:112px}
+  .dealer-head{width:48px;height:48px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="toprow">
+    <button class="back" onclick="location.href='index.html'">‹</button>
+    <div class="brand"><h1>XM CASINO</h1><small>百家樂大廳</small></div>
+    <div class="wallet"><small>百家樂錢包</small><strong id="walletBalance">0.00</strong></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active">全部廳</div>
+    <div class="tab">經典百家樂</div>
+    <div class="tab">熱門</div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="section-title">
+    <h2>選擇房間</h2>
+    <span>點擊房間即可進入</span>
+  </div>
+  <section class="room-grid">
+    
+<button class="room-card" data-room="RB01">
+  <div class="room-top">
+    <span>百家樂 RB01</span>
+    <span class="room-round" id="round-RB01">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 01</div>
+    </div>
+    <div class="mini-road" id="road-RB01"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB01">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB02">
+  <div class="room-top">
+    <span>百家樂 RB02</span>
+    <span class="room-round" id="round-RB02">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 02</div>
+    </div>
+    <div class="mini-road" id="road-RB02"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB02">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB03">
+  <div class="room-top">
+    <span>百家樂 RB03</span>
+    <span class="room-round" id="round-RB03">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 03</div>
+    </div>
+    <div class="mini-road" id="road-RB03"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB03">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB04">
+  <div class="room-top">
+    <span>百家樂 RB04</span>
+    <span class="room-round" id="round-RB04">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 04</div>
+    </div>
+    <div class="mini-road" id="road-RB04"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB04">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB05">
+  <div class="room-top">
+    <span>百家樂 RB05</span>
+    <span class="room-round" id="round-RB05">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 05</div>
+    </div>
+    <div class="mini-road" id="road-RB05"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB05">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB06">
+  <div class="room-top">
+    <span>百家樂 RB06</span>
+    <span class="room-round" id="round-RB06">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 06</div>
+    </div>
+    <div class="mini-road" id="road-RB06"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB06">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+
+<button class="room-card" data-room="RB07">
+  <div class="room-top">
+    <span>百家樂 RB07</span>
+    <span class="room-round" id="round-RB07">第 -- 局</span>
+  </div>
+  <div class="room-main">
+    <div class="dealer">
+      <div class="dealer-head">♛</div>
+      <div class="dealer-name">經典廳 07</div>
+    </div>
+    <div class="mini-road" id="road-RB07"></div>
+  </div>
+  <div class="room-bottom">
+    <span class="status-dot"></span>
+    <span id="state-RB07">開放中</span>
+    <b>進入房間 ›</b>
+  </div>
+</button>
+  </section>
+  <div class="notice">每個房間都是獨立桌台，擁有自己的局數、牌局與結果板。進入房間後，左上角「返回大廳」會回到這一頁。</div>
+</main>
+
+<script>
+(function(){
+"use strict";
+var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+var BET_MS=10000,CARD_MS=1500,MAX_CARDS=6,RESULT_MS=4000;
+var ROUND_MS=BET_MS+CARD_MS*MAX_CARDS+RESULT_MS;
+var ROOM_IDS=[&#x27;RB01&#x27;, &#x27;RB02&#x27;, &#x27;RB03&#x27;, &#x27;RB04&#x27;, &#x27;RB05&#x27;, &#x27;RB06&#x27;, &#x27;RB07&#x27;];
+
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+async function get(path){
+  var r=await fetch(DB+path+".json?ts="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error(r.status);
+  return await r.json();
+}
+
+function drawRoad(el,room){
+  el.innerHTML="";
+  for(var i=0;i<48;i++){
+    var c=document.createElement("div");c.className="mini-cell";el.appendChild(c);
+  }
+  var seed=room.split("").reduce(function(a,c){return a+c.charCodeAt(0)},0);
+  for(var j=0;j<Math.min(16,(seed%13)+4);j++){
+    var cell=el.children[j];
+    var d=document.createElement("div");
+    var n=(seed+j*7)%10;
+    var type=n<5?"banker":(n<9?"player":"tie");
+    d.className="dot "+type;
+    d.textContent=type==="banker"?"莊":type==="player"?"閒":"和";
+    cell.appendChild(d);
+  }
+}
+
+async function refreshRoom(room){
+  var info=null;
+  try{info=await get("/baccarat/rooms/"+room)}catch(e){}
+  var now=Date.now();
+  var epoch=info&&info.epoch?Number(info.epoch):Date.parse("2026-08-11T00:00:00+08:00");
+  var elapsed=Math.max(0,now-epoch);
+  var round=Math.floor(elapsed/ROUND_MS)%108+1;
+  var rem=BET_MS-(elapsed%ROUND_MS);
+  document.getElementById("round-"+room).textContent="第 "+round+" 局";
+  document.getElementById("state-"+room).textContent=rem>0&&rem<=BET_MS?"下注中":"進行中";
+  drawRoad(document.getElementById("road-"+room),room);
+}
+
+async function refreshWallet(){
+  var u=localStorage.getItem("xm_demo_session")||"";
+  if(!u)return;
+  try{
+    var v=await get("/wallets/"+safeKey(u)+"/baccarat");
+    document.getElementById("walletBalance").textContent=Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }catch(e){}
+}
+
+document.addEventListener("click",function(e){
+  var card=e.target.closest&&e.target.closest(".room-card");
+  if(!card)return;
+  var room=card.getAttribute("data-room");
+  location.href="baccarat-room.html?room="+encodeURIComponent(room);
+});
+
+ROOM_IDS.forEach(refreshRoom);
+refreshWallet();
+setInterval(function(){ROOM_IDS.forEach(refreshRoom);refreshWallet()},3000);
+})();
+</script>
+</body>
+</html>

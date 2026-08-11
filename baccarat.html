@@ -927,8 +927,9 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
     依時間應該進行中的那一局，不會從舊局重跑
 */
 
+var ROOM_ID=(new URLSearchParams(location.search).get("room")||"RB01").toUpperCase();
 var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
-var TABLE_PATH="/baccarat/table1";
+var TABLE_PATH="/baccarat/rooms/"+ROOM_ID;
 var BET_MS=10000;       // 下注 10 秒
 var CARD_MS=1500;       // 每張牌佔 1.5 秒
 var RESULT_MS=4000;     // 結果停留 4 秒
@@ -1014,7 +1015,7 @@ async function syncWallet(){
 }
 function betPath(roundNo){
   var tl=getTimeline(Date.now());
-  return "/baccaratBets/table1/cycle_"+tl.cycleIndex+"/round_"+roundNo+"/"+currentUserKey;
+  return "/baccaratBets/"+ROOM_ID+"/cycle_"+tl.cycleIndex+"/round_"+roundNo+"/"+currentUserKey;
 }
 async function loadRoundBet(roundNo){
   if(!currentUserKey)return;
@@ -1321,7 +1322,7 @@ function renderCards(round,dealt){
 }
 
 function setStatus(text,roundNo){
-  if($("status"))$("status").textContent="第 "+roundNo+" 局｜"+text;
+  if($("status"))$("status").textContent=ROOM_ID+"｜第 "+roundNo+" 局｜"+text;
   if($("phaseBtn"))$("phaseBtn").textContent=text;
 }
 
@@ -1410,7 +1411,7 @@ function renderNow(){
   if(!table || !table.epoch || !table.seed){
     table={
       epoch:Date.parse("2026-08-11T00:00:00+08:00"),
-      seed:"XM-BACCARAT-TABLE1-FALLBACK",
+      seed:"XM-BACCARAT-"+ROOM_ID+"-FALLBACK",
       fallback:true
     };
   }
@@ -1583,7 +1584,7 @@ async function placeBet(type){
     return;
   }
 
-  var path="/baccaratBets/table1/cycle_"+tl.cycleIndex+
+  var path="/baccaratBets/"+ROOM_ID+"/cycle_"+tl.cycleIndex+
            "/round_"+tl.roundNo+"/"+currentUserKey;
 
   var record=await walletGet(path) || {
@@ -1602,7 +1603,7 @@ async function placeBet(type){
   var updates={};
   updates["wallets/"+currentUserKey+"/baccarat"]=
     Math.round((remoteBalance-amount)*100)/100;
-  updates["baccaratBets/table1/cycle_"+tl.cycleIndex+
+  updates["baccaratBets/"+ROOM_ID+"/cycle_"+tl.cycleIndex+
           "/round_"+tl.roundNo+"/"+currentUserKey]=record;
 
   await walletPatch(updates);
@@ -1625,7 +1626,7 @@ async function placeBet(type){
 async function settleFirebaseRound(round,cycleIndex){
   if(!currentUserKey)return;
 
-  var path="/baccaratBets/table1/cycle_"+cycleIndex+
+  var path="/baccaratBets/"+ROOM_ID+"/cycle_"+cycleIndex+
            "/round_"+round.roundNo+"/"+currentUserKey;
 
   var record=await walletGet(path);
@@ -1644,7 +1645,7 @@ async function settleFirebaseRound(round,cycleIndex){
   var updates={};
   updates["wallets/"+currentUserKey+"/baccarat"]=
     Math.round((remoteBalance+payout)*100)/100;
-  updates["baccaratBets/table1/cycle_"+cycleIndex+
+  updates["baccaratBets/"+ROOM_ID+"/cycle_"+cycleIndex+
           "/round_"+round.roundNo+"/"+currentUserKey]=record;
 
   await walletPatch(updates);
@@ -1702,7 +1703,7 @@ function bind(){
     }
 
     if(el.id==="lobby"){
-      location.href="index.html";
+      location.href="baccarat-lobby.html";
     }
   },true);
 }
@@ -1722,7 +1723,7 @@ async function ensureTable(){
 
     var fresh={
       epoch:Date.now(),
-      seed:"XM-BACCARAT-TABLE1",
+      seed:"XM-BACCARAT-"+ROOM_ID,
       createdAt:Date.now()
     };
 
@@ -1745,7 +1746,7 @@ async function ensureTable(){
   */
   table={
     epoch:Date.parse("2026-08-11T00:00:00+08:00"),
-    seed:"XM-BACCARAT-TABLE1-FALLBACK",
+    seed:"XM-BACCARAT-"+ROOM_ID+"-FALLBACK",
     fallback:true
   };
 }
@@ -1759,7 +1760,7 @@ async function init(){
     console.error("共用桌台初始化失敗，使用固定備援桌台",e);
     table={
       epoch:Date.parse("2026-08-11T00:00:00+08:00"),
-      seed:"XM-BACCARAT-TABLE1-FALLBACK",
+      seed:"XM-BACCARAT-"+ROOM_ID+"-FALLBACK",
       fallback:true
     };
   }
@@ -1770,7 +1771,7 @@ async function init(){
   if(!table || !table.epoch || !table.seed){
     table={
       epoch:Date.parse("2026-08-11T00:00:00+08:00"),
-      seed:"XM-BACCARAT-TABLE1-FALLBACK",
+      seed:"XM-BACCARAT-"+ROOM_ID+"-FALLBACK",
       fallback:true
     };
   }
