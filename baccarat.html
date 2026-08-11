@@ -1078,23 +1078,27 @@ function renderCenterResult(tl,round){
   var w=document.getElementById("xmCenterWinner");
   if(!box||!p||!b||!w)return;
 
-  if(tl.phase==="result" && round){
-    p.textContent=round.playerTotal;
-    b.textContent=round.bankerTotal;
-
-    var label=round.outcome==="banker"
-      ?"莊贏"
-      :(round.outcome==="player"?"閒贏":"和局");
-
-    w.textContent=label;
-    w.className="xm-center-winner";
-    if(round.outcome==="player")w.classList.add("player");
-    if(round.outcome==="tie")w.classList.add("tie");
-
-    box.classList.add("show");
-  }else{
+  /* 只允許 result 階段顯示 */
+  if(tl.phase!=="result" || !round){
     box.classList.remove("show");
+    box.style.display="none";
+    return;
   }
+
+  p.textContent=round.playerTotal;
+  b.textContent=round.bankerTotal;
+
+  var label=round.outcome==="banker"
+    ?"莊贏"
+    :(round.outcome==="player"?"閒贏":"和局");
+
+  w.textContent=label;
+  w.className="xm-center-winner";
+  if(round.outcome==="player")w.classList.add("player");
+  if(round.outcome==="tie")w.classList.add("tie");
+
+  box.style.display="block";
+  box.classList.add("show");
 }
 
 function toast(msg){
@@ -1428,6 +1432,7 @@ function renderNow(){
   var visualKey=tl.cycleIndex+"|"+tl.roundNo+"|"+tl.phase+"|"+tl.dealt+"|"+tl.remain;
 
   if(tl.phase==="betting"){
+    renderCenterResult({phase:"betting"},null);
     clearCards();
     hideResult();
     setStatus("下注中 "+tl.remain,tl.roundNo);
