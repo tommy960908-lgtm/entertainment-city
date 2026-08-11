@@ -245,7 +245,7 @@ body:has(#TABLE:target) .categories .cat[href="#TABLE"]{
 
 
 /* 快速儲值金額：完全不靠 JavaScript，同頁 hash 切換仍保留 radio 選中狀態 */
-#xmTransferAmount::after{content:"請先選擇金額";}
+#xmTransferAmount::after{content:"";}
 body:has(#dep100:checked) #xmTransferAmount::after{content:"100.00";}
 body:has(#dep500:checked) #xmTransferAmount::after{content:"500.00";}
 body:has(#dep1000:checked) #xmTransferAmount::after{content:"1,000.00";}
