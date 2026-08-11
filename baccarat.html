@@ -400,6 +400,70 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   opacity:1!important;
 }
 
+
+/* ===== 玩家操作狀態 ===== */
+.hit.xm-chip-selected{
+  outline:4px solid #ffd84a !important;
+  outline-offset:-3px !important;
+  box-shadow:0 0 12px rgba(255,216,74,.95), inset 0 0 10px rgba(255,216,74,.22) !important;
+}
+.chip.xm-chip-selected{
+  border-radius:50% !important;
+}
+.hit.xm-bet-selected{
+  outline:4px solid #ffd84a !important;
+  outline-offset:-4px !important;
+  box-shadow:0 0 15px rgba(255,216,74,.95), inset 0 0 18px rgba(255,216,74,.18) !important;
+  border-radius:10px !important;
+}
+
+/* 投注金額直接顯示在對應下注區 */
+.xm-bet-money{
+  position:absolute;
+  z-index:85;
+  pointer-events:none;
+  color:#ffe06a;
+  background:rgba(0,0,0,.76);
+  border:1px solid rgba(255,216,74,.9);
+  border-radius:12px;
+  padding:3px 8px;
+  font-size:clamp(9px,1.7vw,17px);
+  font-weight:950;
+  line-height:1.15;
+  text-align:center;
+  white-space:nowrap;
+  text-shadow:0 1px 3px #000;
+  display:none;
+}
+.xm-bet-money.show{display:block}
+
+/* 主下注區金額 */
+#xmBetMoneyPlayer{left:12%;top:57.6%;width:14%}
+#xmBetMoneyTie{left:43%;top:57.6%;width:14%}
+#xmBetMoneyBanker{left:75%;top:57.6%;width:14%}
+
+/* 上排三種附加投注 */
+#xmBetMoneyPlayerPair{left:11%;top:48.3%;width:15%}
+#xmBetMoneyLucky6{left:43%;top:48.3%;width:14%}
+#xmBetMoneyBankerPair{left:75%;top:48.3%;width:15%}
+
+/* 開獎結果永遠在畫面最上層 */
+.score-banner{
+  z-index:110 !important;
+}
+.score-banner.show{
+  display:block !important;
+  opacity:1 !important;
+}
+.result-banner{
+  z-index:111 !important;
+}
+.result-banner.show{
+  display:block !important;
+  opacity:1 !important;
+  transform:translateX(-50%) scale(1) !important;
+}
+
 </style>
 </head>
 <body>
@@ -430,6 +494,12 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
   <div class="wallet-stat-overlay"><small>餘額</small><strong id="liveBalance">0.00</strong></div>
   <div class="wager-stat-overlay"><small>下注金額</small><strong id="liveWager">0.00</strong></div>
   <div class="win-stat-overlay"><small>輸贏</small><strong id="liveWin">0.00</strong></div>
+  <div class="xm-bet-money" id="xmBetMoneyPlayer"></div>
+  <div class="xm-bet-money" id="xmBetMoneyTie"></div>
+  <div class="xm-bet-money" id="xmBetMoneyBanker"></div>
+  <div class="xm-bet-money" id="xmBetMoneyPlayerPair"></div>
+  <div class="xm-bet-money" id="xmBetMoneyLucky6"></div>
+  <div class="xm-bet-money" id="xmBetMoneyBankerPair"></div>
   <div class="amount ap" id="ap"></div>
   <div class="amount at" id="at"></div>
   <div class="amount ab" id="ab"></div>
@@ -597,6 +667,58 @@ async function loadRoundBet(roundNo){
   };
   currentBetRound=roundNo;
   paintBets();
+}
+
+
+function updatePlayerBetUI(){
+  var fixed=[100,500,1000,5000,10000];
+
+  /* 目前選中的籌碼 */
+  var chipBtns=document.querySelectorAll("[data-chip]");
+  for(var i=0;i<chipBtns.length;i++){
+    var n=Number(chipBtns[i].getAttribute("data-chip"));
+    chipBtns[i].classList.toggle("xm-chip-selected",n===Number(chip));
+  }
+  var custom=document.getElementById("custom");
+  if(custom){
+    custom.classList.toggle(
+      "xm-chip-selected",
+      Number(chip)>0 && fixed.indexOf(Number(chip))===-1
+    );
+  }
+
+  /* 目前有下注的區域 */
+  var betBtns=document.querySelectorAll("[data-bet]");
+  for(var j=0;j<betBtns.length;j++){
+    var type=betBtns[j].getAttribute("data-bet");
+    betBtns[j].classList.toggle(
+      "xm-bet-selected",
+      Number(bets[type]||0)>0
+    );
+  }
+
+  function badge(id,value){
+    var el=document.getElementById(id);
+    if(!el)return;
+    var v=Number(value||0);
+    if(v>0){
+      el.textContent=v.toLocaleString("en-US",{
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      });
+      el.classList.add("show");
+    }else{
+      el.textContent="";
+      el.classList.remove("show");
+    }
+  }
+
+  badge("xmBetMoneyPlayer",bets.player);
+  badge("xmBetMoneyTie",bets.tie);
+  badge("xmBetMoneyBanker",bets.banker);
+  badge("xmBetMoneyPlayerPair",bets.playerPair);
+  badge("xmBetMoneyLucky6",bets.lucky6);
+  badge("xmBetMoneyBankerPair",bets.bankerPair);
 }
 
 function toast(msg){
@@ -831,11 +953,10 @@ function paintBets(){
 
   var all=document.querySelectorAll(".hit");
   for(var i=0;i<all.length;i++){
-    all[i].classList.remove("sel");
-    all[i].style.outline="none";
     /* 不在這裡清除選取狀態，交給 refreshSelectionUI 控制 */
   }
   refreshSelectionUI();
+  updatePlayerBetUI();
 }
 
 function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
@@ -888,9 +1009,12 @@ function renderRoadForCurrentRound(cycleIndex,currentRoundNo,includeCurrent){
 function showResult(round){
   if(!round)return;
 
-  var label=round.outcome==="banker"?"莊贏":(round.outcome==="player"?"閒贏":"和局");
-  var score=$("scoreBanner");
-  var result=$("resultBanner");
+  var label=round.outcome==="banker"
+    ?"莊贏"
+    :(round.outcome==="player"?"閒贏":"和局");
+
+  var score=document.getElementById("scoreBanner");
+  var result=document.getElementById("resultBanner");
 
   if(score){
     score.textContent="閒 "+round.playerTotal+"  VS  "+round.bankerTotal+" 莊";
@@ -906,12 +1030,15 @@ function showResult(round){
     result.style.opacity="1";
   }
 
-  setStatus(label+"｜閒 "+round.playerTotal+"：莊 "+round.bankerTotal,round.roundNo);
+  setStatus(
+    label+"｜閒 "+round.playerTotal+"：莊 "+round.bankerTotal,
+    round.roundNo
+  );
 }
 
 function hideResult(){
-  var score=$("scoreBanner");
-  var result=$("resultBanner");
+  var score=document.getElementById("scoreBanner");
+  var result=document.getElementById("resultBanner");
 
   if(score){
     score.classList.remove("show");
@@ -1032,6 +1159,7 @@ async function placeBet(type){
   bets[type]=record[type];
   currentBetRound=tl.roundNo;
   paintBets();
+  updatePlayerBetUI();
 }
 function bind(){
   document.addEventListener("click",function(e){
@@ -1054,7 +1182,7 @@ function bind(){
       }
 
       var v=Number(prompt("請輸入自訂籌碼金額"));
-      if(v>0){chip=v;refreshSelectionUI();}
+      if(v>0){chip=v; updatePlayerBetUI();refreshSelectionUI();}
       return;
     }
 
@@ -1138,6 +1266,7 @@ async function init(){
   }
 
   bind();
+  updatePlayerBetUI();
 
   try{
     refreshSelectionUI();
