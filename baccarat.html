@@ -374,8 +374,8 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 .room-closed-mask{
   position:absolute;
   z-index:80;
-  left:0;right:0;top:0;height:71.5%;
-  background:rgba(0,0,0,.35);
+  inset:0;
+  background:rgba(0,0,0,.48);
   display:none;
   pointer-events:none;
 }
@@ -452,7 +452,13 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 <div class="controls single"><button class="phase" id="phaseBtn" disabled>下注中 10</button></div>
 
-<div class="toast" id="t(function(){
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+
+(function(){
 "use strict";
 
 /*
@@ -470,7 +476,6 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 
 var DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
 var TABLE_PATH="/baccarat/table1";
-var TABLE_VERSION=2;
 var BET_MS=10000;       // 下注 10 秒
 var CARD_MS=1500;       // 每張牌佔 1.5 秒
 var RESULT_MS=4000;     // 結果停留 4 秒
@@ -901,8 +906,8 @@ function renderNow(){
     bets={player:0,tie:0,banker:0,playerPair:0,bankerPair:0,lucky6:0};
     paintBets();
     renderRoadForCurrentRound(tl.cycleIndex,0,false);
-    if($("status"))$("status").textContent="房間休息中｜"+tl.closeRemain+" 秒後重新開桌";
-    if($("phaseBtn"))$("phaseBtn").textContent="休息 "+tl.closeRemain+" 秒";
+    setStatus("房間休息中 "+tl.closeRemain+" 秒",BOARD_CAPACITY);
+    if($("phaseBtn"))$("phaseBtn").textContent="房間休息中 "+tl.closeRemain+" 秒";
     lastVisualKey="closed|"+tl.cycleIndex+"|"+tl.closeRemain;
     return;
   }
@@ -962,7 +967,7 @@ function selectChip(v){
 
 async function placeBet(type){
   var tl=getTimeline(Date.now());
-  if(tl.phase!=="betting"){toast(tl.phase==="closed"?"房間休息中":"目前已封盤");return}
+  if(tl.phase!=="betting"){toast("目前已封盤");return}
   if(!walletReady){toast("百家樂錢包尚未載入");return}
   if(!currentUser){toast("請先登入");return}
 
@@ -1026,60 +1031,73 @@ function bind(){
 }
 
 async function ensureTable(){
-  var current=null;
-  try{
-    current=await fbGet(TABLE_PATH);
-  }catch(e){
-    console.error("讀取共用桌台失敗",e);
-    throw new Error("TABLE_READ_FAILED");
-  }
-
   /*
-    舊版 table1 沒有 version 時，重新建立一次新的共用時間軸。
-    這只會在升級到這版時做一次，避免沿用很舊的 epoch 一進頁面就剛好落在休息區。
+    優先使用 Firebase 共用桌台。
+    如果 Firebase 桌台節點暫時讀不到，改用所有裝置都相同的固定 epoch/seed，
+    不讓整個遊戲因此停止。
   */
-  if(!current || !current.epoch || !current.seed || Number(current.version||0)!==TABLE_VERSION){
+  try{
+    var current=await fbGet(TABLE_PATH);
+    if(current && current.epoch && current.seed){
+      table=current;
+      return;
+    }
+
     var fresh={
-      version:TABLE_VERSION,
       epoch:Date.now(),
-      seed:"XM-TABLE2-"+Date.now()+"-"+Math.floor(Math.random()*1000000000),
+      seed:"XM-BACCARAT-TABLE1",
       createdAt:Date.now()
     };
 
     try{
       await fbPut(TABLE_PATH,fresh);
-      current=await fbGet(TABLE_PATH);
+      table=await fbGet(TABLE_PATH);
+      if(table && table.epoch && table.seed)return;
     }catch(e){
-      console.error("建立共用桌台失敗",e);
-      throw new Error("TABLE_WRITE_FAILED");
+      console.error("建立 Firebase 桌台失敗，改用固定共用時間軸",e);
     }
+  }catch(e){
+    console.error("讀取 Firebase 桌台失敗，改用固定共用時間軸",e);
   }
 
-  table=current;
+  /*
+    固定備援時間軸：
+    所有手機都用同一個起始時間與 seed。
+    因此就算 Firebase 桌台節點短暫失效，倒數/牌序仍會繼續跑，
+    且重新整理不會重新抽牌。
+  */
+  table={
+    epoch:Date.parse("2026-08-11T00:00:00+08:00"),
+    seed:"XM-BACCARAT-TABLE1-FALLBACK",
+    fallback:true
+  };
 }
 async function init(){
-  /* 第 1 層：共用桌台。只有這個真的失敗才顯示桌台同步失敗。 */
-  try{
-    await ensureTable();
-  }catch(e){
-    console.error(e);
-    toast("桌台同步失敗，請重新整理");
-    return;
-  }
+  /*
+    桌台先啟動：錢包失敗不能讓倒數/發牌/開牌停止。
+  */
+  await ensureTable();
 
   bind();
   refreshSelectionUI();
-
-  /* 先啟動桌台，不能等錢包。 */
+  paintBets();
   renderNow();
+
+  if(ticker)clearInterval(ticker);
   ticker=setInterval(renderNow,200);
 
-  /* 第 2 層：玩家錢包。失敗只影響下注，不影響倒數/發牌/開牌。 */
+  /*
+    玩家百家樂錢包獨立同步。
+  */
   try{
     await syncWallet();
     var tl0=getTimeline(Date.now());
     if(currentUserKey && tl0.phase!=="closed"){
-      try{await loadRoundBet(tl0.roundNo)}catch(e){console.error("讀取本局下注失敗",e)}
+      try{
+        await loadRoundBet(tl0.roundNo);
+      }catch(e){
+        console.error("讀取本局下注失敗",e);
+      }
     }
   }catch(e){
     console.error("百家樂錢包同步失敗",e);
@@ -1095,12 +1113,6 @@ async function init(){
     });
   },1500);
 }
-init();
-
-})();敗");
-  }
-}
-
 init();
 
 })();
