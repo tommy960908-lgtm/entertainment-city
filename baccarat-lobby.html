@@ -87,6 +87,79 @@ padding-bottom:30px}
 .tabs{grid-template-columns:1fr!important;}
 .tabs .tab{width:100%;text-align:center;}
 
+
+/* ===== 大廳封面路單縮小版 ===== */
+.room-main{
+  grid-template-columns:24% 76%!important;
+}
+.mini-road{
+  grid-template-columns:repeat(12,1fr)!important;
+  grid-template-rows:repeat(6,1fr)!important;
+}
+.dot{
+  width:58%!important;
+  max-height:58%!important;
+  font-size:clamp(5px,1.05vw,8px)!important;
+  border-width:1px!important;
+}
+.dealer-head{
+  width:44px!important;
+  height:44px!important;
+  font-size:23px!important;
+}
+.dealer-name{
+  font-size:10px!important;
+  padding:2px 5px!important;
+}
+
+
+/* ===== 關桌狀態 ===== */
+.room-card.closed{
+  filter:grayscale(1);
+  opacity:.56;
+  pointer-events:auto;
+}
+.room-card.closed .room-main,
+.room-card.closed .room-top,
+.room-card.closed .room-bottom{
+  background:#1a1a1a!important;
+}
+.room-card.closed .mini-road{
+  background:#d9d9d9!important;
+}
+.room-card.closed .dealer{
+  background:#222!important;
+}
+.room-card.closed .status-dot{
+  background:#777!important;
+  box-shadow:none!important;
+}
+.room-card.closed .room-bottom{
+  color:#aaa!important;
+}
+.room-card.closed .room-bottom b{
+  display:none!important;
+}
+.room-card.closed::before{
+  content:"已關桌";
+  position:absolute;
+  z-index:15;
+  left:50%;
+  top:51%;
+  transform:translate(-50%,-50%);
+  min-width:54%;
+  padding:12px 16px;
+  text-align:center;
+  border-radius:12px;
+  background:rgba(55,55,55,.94);
+  border:2px solid #9b9b9b;
+  color:#f0f0f0;
+  font-size:clamp(18px,3.5vw,28px);
+  font-weight:950;
+  letter-spacing:2px;
+  box-shadow:0 0 20px rgba(0,0,0,.45);
+}
+
 </style>
 </head>
 <body>
@@ -404,19 +477,19 @@ function drawRoad(el,seed,cycleIndex,completedRounds){
   if(!el)return;
   el.innerHTML="";
 
-  for(var i=0;i<48;i++){
+  for(var i=0;i<72;i++){
     var cell=document.createElement("div");
     cell.className="mini-cell";
     el.appendChild(cell);
   }
 
-  var start=Math.max(1,completedRounds-47);
+  var start=Math.max(1,completedRounds-71);
   var results=[];
   for(var r=start;r<=completedRounds;r++){
     results.push(makeRound(seed,cycleIndex,r));
   }
 
-  for(var j=0;j<results.length && j<48;j++){
+  for(var j=0;j<results.length && j<72;j++){
     var cell2=el.children[j];
     if(!cell2)continue;
     var result=results[j];
@@ -476,6 +549,12 @@ async function refreshRoom(room){
   var roundEl=document.getElementById("round-"+room);
   var stateEl=document.getElementById("state-"+room);
   var roadEl=document.getElementById("road-"+room);
+  var card=document.querySelector('.room-card[data-room="'+room+'"]');
+
+  if(card){
+    card.classList.toggle("closed",tl.phase==="closed");
+    card.setAttribute("data-closed",tl.phase==="closed"?"1":"0");
+  }
 
   if(roundEl){
     roundEl.textContent=tl.phase==="closed"
@@ -485,7 +564,7 @@ async function refreshRoom(room){
 
   if(stateEl){
     if(tl.phase==="closed"){
-      stateEl.textContent="休息 "+tl.closeRemain+" 秒";
+      stateEl.textContent="已關桌｜"+tl.closeRemain+" 秒後開桌";
     }else if(tl.phase==="betting"){
       stateEl.textContent="下注中 "+tl.remain;
     }else{
@@ -530,6 +609,11 @@ document.addEventListener("click",function(e){
   if(!card)return;
   e.preventDefault();
   var room=card.getAttribute("data-room");
+
+  if(card.getAttribute("data-closed")==="1"){
+    return;
+  }
+
   if(room)enterRoom(room);
 });
 

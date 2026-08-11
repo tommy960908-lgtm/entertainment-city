@@ -1421,6 +1421,13 @@ function renderNow(){
 
   /* 房間關閉 1 分鐘：結果板清空，不能下注 */
   if(tl.phase==="closed"){
+    /* 結果板滿後關桌 60 秒：房內玩家強制回百家樂大廳 */
+    if(!window.__xmClosingRedirect){
+      window.__xmClosingRedirect=true;
+      setTimeout(function(){
+        location.replace("baccarat-lobby.html");
+      },300);
+    }
     if($("roomClosedMask"))$("roomClosedMask").classList.add("show");
     clearCards();
     hideResult();
