@@ -791,6 +791,17 @@ html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMac
 #xmTextTie{left:49.75%;top:58.15%}
 #xmTextBanker{left:81.55%;top:58.15%}
 
+
+/* ===== 移除舊白色下注數字，只保留黃色框內文字 ===== */
+.amount,
+#ap,
+#at,
+#ab{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+}
+
 </style>
 </head>
 <body>
@@ -1321,9 +1332,6 @@ function paintBets(){
     $("liveWager").textContent=fmt(wt);
   }
   if($("liveWin"))$("liveWin").textContent=fmt(lastWin);
-  if($("ap"))$("ap").textContent=bets.player?fmt(bets.player):"";
-  if($("at"))$("at").textContent=bets.tie?fmt(bets.tie):"";
-  if($("ab"))$("ab").textContent=bets.banker?fmt(bets.banker):"";
   if($("app"))$("app").textContent=bets.playerPair?fmt(bets.playerPair):"";
   if($("abp"))$("abp").textContent=bets.bankerPair?fmt(bets.bankerPair):"";
   if($("al6"))$("al6").textContent=bets.lucky6?fmt(bets.lucky6):"";
