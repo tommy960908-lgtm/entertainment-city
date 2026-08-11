@@ -5717,5 +5717,68 @@ window.xmRenderGameWallets=render;
 })();
 </script>
 
+
+<script id="xm-bottom-nav-active-fix">
+(function(){
+  function setActive(id){
+    var nav=document.getElementById("xmGlobalBottomNav");
+    if(!nav)return;
+
+    var buttons=nav.querySelectorAll(".navbtn");
+    buttons.forEach(function(btn){
+      btn.classList.remove("active");
+    });
+
+    var target=document.getElementById(id);
+    if(target)target.classList.add("active");
+  }
+
+  function syncBottomNav(){
+    var hash=location.hash || "";
+
+    if(hash==="#wallet-modal"){
+      setActive("xmNavWallet");
+      return;
+    }
+
+    if(hash==="#transaction-history-modal"){
+      setActive("xmHistoryNav");
+      return;
+    }
+
+    if(hash==="#customer-service-modal"){
+      setActive("xmNavService");
+      return;
+    }
+
+    if(hash==="#profile-modal"){
+      setActive("xmProfileNav");
+      return;
+    }
+
+    /* 其他情況一律視為首頁 */
+    setActive("xmNavHome");
+  }
+
+  window.addEventListener("hashchange",syncBottomNav);
+  window.addEventListener("popstate",syncBottomNav);
+  document.addEventListener("DOMContentLoaded",syncBottomNav);
+
+  /* 點按時先即時切換，避免等 hashchange 才亮 */
+  document.addEventListener("click",function(e){
+    var a=e.target.closest && e.target.closest("#xmGlobalBottomNav .navbtn");
+    if(!a)return;
+
+    if(a.id==="xmNavWallet")setActive("xmNavWallet");
+    else if(a.id==="xmHistoryNav")setActive("xmHistoryNav");
+    else if(a.id==="xmNavService")setActive("xmNavService");
+    else if(a.id==="xmProfileNav")setActive("xmProfileNav");
+    else if(a.id==="xmNavHome")setActive("xmNavHome");
+  },true);
+
+  syncBottomNav();
+})();
+</script>
+
 </body>
 </html>
