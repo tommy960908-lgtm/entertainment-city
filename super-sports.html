@@ -3,7 +3,28 @@
 </style></head><body><header><div class="brand">SUPER 體育</div><div id="xmSportsWallet" style="margin-top:7px;color:#f1c94f;font-weight:900;font-size:14px">體育錢包：0.00</div></header><div class="bar" id="days"><button class="b on" data-o="0">今日</button><button class="b" data-o="1">明日</button><button class="b" data-o="-1">昨日</button></div><div class="bar" id="sports"></div><main><div class="note">僅開放未開賽賽事的虛擬點數預測；體育錢包與首頁 Firebase 共用，每 5 分鐘重新整理賽事資料。</div><div id="games" class="empty">載入中…</div></main><script>
 const API='https://www.thesportsdb.com/api/v1/json/123';
 const S=[['Soccer','足球'],['Basketball','籃球'],['Baseball','棒球'],['American Football','美式足球'],['Ice Hockey','冰球'],['Tennis','網球'],['Volleyball','排球'],['Motorsport','賽車'],['Golf','高爾夫'],['Fighting','格鬥'],['Rugby','橄欖球'],['Cricket','板球'],['Cycling','自行車'],['Handball','手球']];
-const ZH={'English Premier League':'英格蘭超級足球聯賽','Spanish La Liga':'西班牙甲級足球聯賽','Italian Serie A':'義大利甲級足球聯賽','German Bundesliga':'德國甲級足球聯賽','French Ligue 1':'法國甲級足球聯賽','UEFA Champions League':'歐洲冠軍聯賽','NBA':'NBA 美國職籃','MLB':'MLB 美國職棒','NFL':'NFL 美國職業美式足球','NHL':'NHL 美國職業冰球','WNBA':'WNBA 美國女子職籃','Japanese J1 League':'日本 J1 聯賽','Major League Soccer':'美國職業足球大聯盟'};function zhName(v){return ZH[v]||v||''}
+const ZH={
+'English Premier League':'英格蘭超級足球聯賽','English League Championship':'英格蘭冠軍足球聯賽',
+'Spanish La Liga':'西班牙甲級足球聯賽','Italian Serie A':'義大利甲級足球聯賽',
+'German Bundesliga':'德國甲級足球聯賽','French Ligue 1':'法國甲級足球聯賽',
+'UEFA Champions League':'歐洲冠軍聯賽','UEFA Europa League':'歐霸盃',
+'UEFA Europa Conference League':'歐洲協會聯賽','FIFA World Cup':'世界盃足球賽',
+'NBA':'NBA 美國職籃','WNBA':'WNBA 美國女子職籃','NCAA':'NCAA 美國大學體育',
+'MLB':'MLB 美國職棒','NFL':'NFL 美國職業美式足球','NHL':'NHL 美國職業冰球',
+'Japanese J1 League':'日本 J1 聯賽','Japanese J2 League':'日本 J2 聯賽',
+'Major League Soccer':'美國職業足球大聯盟','Australian A-League':'澳洲甲級足球聯賽',
+'Chinese Super League':'中國足球超級聯賽','K League 1':'韓國 K1 聯賽'
+};function zhName(v){return ZH[v]||v||''}
+
+const XM_ZH_TEXT={
+"Home":"主隊","Away":"客隊","Draw":"和局","Live":"比賽中","Finished":"已完場",
+"Not Started":"未開賽","Postponed":"延期","Cancelled":"取消","Canceled":"取消",
+"Halftime":"中場","Soccer":"足球","Basketball":"籃球","Baseball":"棒球",
+"American Football":"美式足球","Ice Hockey":"冰球","Tennis":"網球",
+"Volleyball":"排球","Motorsport":"賽車","Golf":"高爾夫","Fighting":"格鬥",
+"Rugby":"橄欖球","Cricket":"板球","Cycling":"自行車","Handball":"手球"
+};
+
 function zhStatus(v){const m={'Not Started':'未開賽','NS':'未開賽','Match Finished':'已完場','FT':'已完場','Finished':'已完場','Postponed':'延期','Cancelled':'取消','Canceled':'取消','In Progress':'比賽中','Live':'比賽中','Halftime':'中場'};return m[v]||v||''}
 let sport='Soccer',off=0;const se=document.querySelector('#sports'),ge=document.querySelector('#games');
 S.forEach(([id,n],i)=>{let b=document.createElement('button');b.className='b '+(!i?'on':'');b.textContent=n;b.onclick=()=>{[...se.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');sport=id;load()};se.appendChild(b)});
