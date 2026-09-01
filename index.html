@@ -1938,7 +1938,10 @@ html{
 <script>
 function openSheet(title,body){document.getElementById('sheetTitle').textContent=title;document.getElementById('sheetBody').textContent=body;document.getElementById('sheet').classList.add('open')}
 function closeSheet(){document.getElementById('sheet').classList.remove('open')}
-function openGame(name){openSheet(name,'尚未開放 敬請期待')}
+function openGame(name){
+  if(name==='SUPER 體育'){ window.location.href='super-sports.html'; return; }
+  openSheet(name,'尚未開放 敬請期待');
+}
 
 </script>
 
