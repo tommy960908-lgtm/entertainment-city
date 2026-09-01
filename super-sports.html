@@ -33,7 +33,7 @@ main{max-width:980px;margin:auto}
  <div class="top"><div class="brand">SUPER 體育</div><div class="quota" id="quota">真實賠率</div></div>
  <div class="bar" id="sports"></div>
 </header>
-<div class="notice">賠率來源：The Odds API。只顯示未開賽賽事；每 5 分鐘重新取得最新賠率。此頁僅供不可兌現的虛擬預測使用。</div>
+<div class="notice">賠率來源：The Odds API。只顯示未開賽賽事；每 30 分鐘重新取得最新賠率。此頁僅供不可兌現的虛擬預測使用。</div>
 <main><div id="games" class="empty">載入中…</div></main>
 
 <div class="detail" id="detail">
@@ -194,7 +194,7 @@ function render(){
   document.getElementById('pickmsg').classList.add('show');
  };
  window.quickPick=function(i,mkt,label,pr){current=events[i];pickReal(mkt,label,pr)};
- sportTabs();load();setInterval(load,300000);
+ sportTabs();load();setInterval(load,1800000);
 })();
 </script>
 </body>
