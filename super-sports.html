@@ -70,6 +70,38 @@ const ZHSPORT={
 'soccer_epl':'英格蘭超級足球聯賽','soccer_spain_la_liga':'西班牙甲級足球聯賽','soccer_italy_serie_a':'義大利甲級足球聯賽',
 'soccer_germany_bundesliga':'德國甲級足球聯賽','soccer_france_ligue_one':'法國甲級足球聯賽','soccer_uefa_champs_league':'歐洲冠軍聯賽','soccer_usa_mls':'美國職業足球大聯盟'
 };
+const XM_ZH_CACHE_KEY='xm_real_odds_zh_tw_v1';
+let XM_ZH_CACHE={};
+try{XM_ZH_CACHE=JSON.parse(localStorage.getItem(XM_ZH_CACHE_KEY)||'{}')||{}}catch(e){XM_ZH_CACHE={}}
+function hasZh(v){return /[\u3400-\u9fff]/.test(String(v||''))}
+async function zhAuto(v){
+  v=String(v||'').trim();
+  if(!v)return '';
+  if(hasZh(v))return v;
+  if(XM_ZH_CACHE[v])return XM_ZH_CACHE[v];
+  let t='';
+  try{
+    const u='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q='+encodeURIComponent(v);
+    const r=await fetch(u,{cache:'force-cache'});
+    const j=await r.json();
+    if(Array.isArray(j)&&Array.isArray(j[0])) t=j[0].map(x=>x&&x[0]||'').join('').trim();
+  }catch(e){}
+  if(!t || t.toLowerCase()===v.toLowerCase()){
+    try{
+      const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(v)+'&langpair=en|zh-TW';
+      const r=await fetch(u,{cache:'force-cache'});
+      const j=await r.json();
+      t=String(j?.responseData?.translatedText||'').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
+    }catch(e){}
+  }
+  if(t && t.toLowerCase()!==v.toLowerCase()){
+    XM_ZH_CACHE[v]=t;
+    try{localStorage.setItem(XM_ZH_CACHE_KEY,JSON.stringify(XM_ZH_CACHE))}catch(e){}
+    return t;
+  }
+  return v;
+}
+
 let group=0,activeKeys=[],events=[],current=null;
 const $=q=>document.querySelector(q), esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function key(){return localStorage.getItem('xm_odds_api_key')||''}
@@ -86,7 +118,6 @@ function point(v){const n=Number(v);return Number.isFinite(n)?((n>0?'+':'')+n):'
 function sportTabs(){
  const el=$('#sports');el.innerHTML='';
  SPORT_GROUPS.forEach(([name],i)=>{const b=document.createElement('button');b.className='tab '+(i===group?'on':'');b.textContent=name;b.onclick=()=>{group=i;sportTabs();load()};el.appendChild(b)});
- const k=document.createElement('button');k.className='tab';k.textContent='API設定';k.onclick=showKey;el.appendChild(k);
 }
 async function fetchOdds(sk){
  const u=`${BASE}/sports/${encodeURIComponent(sk)}/odds/?apiKey=${encodeURIComponent(key())}&regions=us&markets=h2h,spreads,totals&oddsFormat=decimal&dateFormat=iso`;
@@ -104,6 +135,14 @@ async function load(){
   events=[];
   packs.forEach((p,i)=>{if(p.status==='fulfilled')p.value.filter(isFuture).forEach(x=>events.push({...x,_sport:activeKeys[i]}))});
   events.sort((a,b)=>new Date(a.commence_time)-new Date(b.commence_time));
+  events=await Promise.all(events.map(async x=>{
+    const books=x.bookmakers||[];
+    await Promise.all(books.map(async b=>{if(b?.title) await zhAuto(b.title)}));
+    const [homeZh,awayZh,sportZh]=await Promise.all([
+      zhAuto(x.home_team),zhAuto(x.away_team),zhAuto(x.sport_title||'')
+    ]);
+    return {...x,_homeZh:homeZh,_awayZh:awayZh,_sportZh:sportZh};
+  }));
   render();
  }catch(e){console.error(e);ge.textContent='真實賠率暫時無法取得，請檢查 API Key 或稍後再試。'}
 }
@@ -119,12 +158,12 @@ function render(){
   if(!events.length){ge.className='empty';ge.textContent='目前沒有未開賽賽事或暫無賠率';return}
   ge.className='';let last='';
   ge.innerHTML=events.map((x,i)=>{
-   const league=ZHSPORT[x._sport]||x.sport_title||'賽事';
-   const b=chooseBook(x),h=x.home_team,a=x.away_team,h2h=market(b,'h2h'),sp=market(b,'spreads'),to=market(b,'totals');
-   const hh=out(h2h,h),ha=out(h2h,a),sh=out(sp,h),sa=out(sp,a),ov=(to?.outcomes||[]).find(o=>o.name==='Over'),un=(to?.outcomes||[]).find(o=>o.name==='Under');
+   const league=ZHSPORT[x._sport]||x._sportZh||x.sport_title||'賽事';
+   const b=chooseBook(x),h=x._homeZh||x.home_team,a=x._awayZh||x.away_team,hRaw=x.home_team,aRaw=x.away_team,h2h=market(b,'h2h'),sp=market(b,'spreads'),to=market(b,'totals');
+   const hh=out(h2h,hRaw),ha=out(h2h,aRaw),sh=out(sp,hRaw),sa=out(sp,aRaw),ov=(to?.outcomes||[]).find(o=>o.name==='Over'),un=(to?.outcomes||[]).find(o=>o.name==='Under');
    const head=league!==last?`<div class="league"><span>${esc(league)}</span></div>`:'';last=league;
    return head+`<div class="game">
-    <div class="meta">${fmt(x.commence_time)} · 未開賽 · ${esc(b?.title||'賠率來源')}</div>
+    <div class="meta">${fmt(x.commence_time)} · 未開賽 · ${esc((b?.title&&XM_ZH_CACHE[b.title])||b?.title||'賠率來源')}</div>
     <div class="teams"><div class="team">${esc(h)}（主）</div><div class="team">${esc(a)}</div></div>
     <button class="all" style="float:right;margin-top:-50px" onclick="openDetail(${i})">全部</button>
     <div class="oddsrow">
@@ -136,10 +175,10 @@ function render(){
   }).join('');
  };
  window.openDetail=function(i){
-  current=events[i];const b=chooseBook(current),h=current.home_team,a=current.away_team;
+  current=events[i];const b=chooseBook(current),h=current._homeZh||current.home_team,a=current._awayZh||current.away_team,hRaw=current.home_team,aRaw=current.away_team;
   document.getElementById('dh').textContent=h+'（主）';document.getElementById('da').textContent=a;
   const h2h=market(b,'h2h'),sp=market(b,'spreads'),to=market(b,'totals');
-  const hh=out(h2h,h),ha=out(h2h,a),sh=out(sp,h),sa=out(sp,a),ov=(to?.outcomes||[]).find(o=>o.name==='Over'),un=(to?.outcomes||[]).find(o=>o.name==='Under');
+  const hh=out(h2h,hRaw),ha=out(h2h,aRaw),sh=out(sp,hRaw),sa=out(sp,aRaw),ov=(to?.outcomes||[]).find(o=>o.name==='Over'),un=(to?.outcomes||[]).find(o=>o.name==='Under');
   const btn=(label,mkt,o)=>`<button class="sel" onclick="pickReal('${mkt}','${encodeURIComponent(label)}','${o?.price??''}')"><span class="pt">${esc(label)}</span><span class="price">${price(o?.price)}</span></button>`;
   document.getElementById('markets').innerHTML=
    `<div class="market"><div class="marketName">讓球</div>${btn(h+' '+point(sh?.point),'讓球',sh)}${btn(a+' '+point(sa?.point),'讓球',sa)}</div>`+
