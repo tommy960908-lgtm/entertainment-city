@@ -16,7 +16,7 @@ const ZH={
 'Chinese Super League':'中國足球超級聯賽','K League 1':'韓國 K1 聯賽'
 };function zhName(v){return ZH[v]||v||''}
 
-const XM_TRANS_CACHE_KEY='xm_super_zh_tw_cache_v1';
+const XM_TRANS_CACHE_KEY='xm_super_zh_tw_cache_v2';
 let XM_TRANS_CACHE={};
 try{XM_TRANS_CACHE=JSON.parse(localStorage.getItem(XM_TRANS_CACHE_KEY)||'{}')||{}}catch(e){XM_TRANS_CACHE={}}
 
@@ -27,19 +27,32 @@ async function zhAuto(v){
   if(ZH[v])return ZH[v];
   if(looksChinese(v))return v;
   if(XM_TRANS_CACHE[v])return XM_TRANS_CACHE[v];
+
+  let t='';
   try{
-    const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(v)+'&langpair=en|zh-TW';
+    const u='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q='+encodeURIComponent(v);
     const r=await fetch(u,{cache:'force-cache'});
     const j=await r.json();
-    let t=(j&&j.responseData&&j.responseData.translatedText)||v;
-    t=String(t).replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
-    if(t && t.toLowerCase()!==v.toLowerCase()){
-      XM_TRANS_CACHE[v]=t;
-      try{localStorage.setItem(XM_TRANS_CACHE_KEY,JSON.stringify(XM_TRANS_CACHE))}catch(e){}
-      return t;
-    }
+    if(Array.isArray(j)&&Array.isArray(j[0])) t=j[0].map(x=>x&&x[0]||'').join('').trim();
   }catch(e){}
-  return v;
+
+  if(!t || t.toLowerCase()===v.toLowerCase()){
+    try{
+      const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(v)+'&langpair=en|zh-TW';
+      const r=await fetch(u,{cache:'force-cache'});
+      const j=await r.json();
+      t=String(j?.responseData?.translatedText||'').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
+    }catch(e){}
+  }
+
+  if(t && t.toLowerCase()!==v.toLowerCase()){
+    XM_TRANS_CACHE[v]=t;
+    try{localStorage.setItem(XM_TRANS_CACHE_KEY,JSON.stringify(XM_TRANS_CACHE))}catch(e){}
+    return t;
+  }
+
+  /* 翻譯服務不可用時，不再把英文隊名直接顯示在中文介面 */
+  return '隊伍';
 }
 
 const XM_ZH_TEXT={
