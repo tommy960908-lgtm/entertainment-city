@@ -1,0 +1,122 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SUPER 體育</title><style>
+*{box-sizing:border-box}body{margin:0;background:#07120d;color:white;font-family:-apple-system,sans-serif}header{padding:14px;background:#091710;position:sticky;top:0}.brand{font-size:21px;font-weight:900;color:#f1c94f}.bar{display:flex;gap:8px;overflow:auto;padding:10px;background:#0c1c13}.b{white-space:nowrap;border:0;border-radius:20px;padding:9px 13px;background:#183323;color:white}.on{background:#d5ad3d;color:#111;font-weight:800}main{padding:10px 10px 70px}.note,.game{background:#102319;border:1px solid #234a32;border-radius:12px;padding:12px;margin-bottom:9px}.note{font-size:12px;color:#b7c8bc}.league{color:#edc956;font-weight:800;margin:13px 2px 7px}.meta{font-size:12px;color:#92aa9b}.teams{display:flex;justify-content:space-between;align-items:center;margin-top:9px}.team{font-weight:750;margin:8px 0}.score{font-size:19px;font-weight:900}.picks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.pick{border:1px solid #326b46;background:#173b26;color:white;padding:10px;border-radius:8px}.pick.sel{border-color:#f1c94f;color:#f1c94f}.empty{text-align:center;color:#91a598;padding:40px}
+</style></head><body><header><div class="brand">SUPER 體育</div><div id="xmSportsWallet" style="margin-top:7px;color:#f1c94f;font-weight:900;font-size:14px">體育錢包：0.00</div></header><div class="bar" id="days"><button class="b on" data-o="0">今日</button><button class="b" data-o="1">明日</button><button class="b" data-o="-1">昨日</button></div><div class="bar" id="sports"></div><main><div class="note">僅開放未開賽賽事的虛擬點數預測；體育錢包與首頁 Firebase 共用，每 5 分鐘重新整理賽事資料。</div><div id="games" class="empty">載入中…</div></main><script>
+const API='https://www.thesportsdb.com/api/v1/json/123';
+const S=[['Soccer','足球'],['Basketball','籃球'],['Baseball','棒球'],['American Football','美式足球'],['Ice Hockey','冰球'],['Tennis','網球'],['Volleyball','排球'],['Motorsport','賽車'],['Golf','高爾夫'],['Fighting','格鬥'],['Rugby','橄欖球'],['Cricket','板球'],['Cycling','自行車'],['Handball','手球']];
+const ZH={
+'English Premier League':'英格蘭超級足球聯賽','English League Championship':'英格蘭冠軍足球聯賽',
+'Spanish La Liga':'西班牙甲級足球聯賽','Italian Serie A':'義大利甲級足球聯賽',
+'German Bundesliga':'德國甲級足球聯賽','French Ligue 1':'法國甲級足球聯賽',
+'UEFA Champions League':'歐洲冠軍聯賽','UEFA Europa League':'歐霸盃',
+'UEFA Europa Conference League':'歐洲協會聯賽','FIFA World Cup':'世界盃足球賽',
+'NBA':'NBA 美國職籃','WNBA':'WNBA 美國女子職籃','NCAA':'NCAA 美國大學體育',
+'MLB':'MLB 美國職棒','NFL':'NFL 美國職業美式足球','NHL':'NHL 美國職業冰球',
+'Japanese J1 League':'日本 J1 聯賽','Japanese J2 League':'日本 J2 聯賽',
+'Major League Soccer':'美國職業足球大聯盟','Australian A-League':'澳洲甲級足球聯賽',
+'Chinese Super League':'中國足球超級聯賽','K League 1':'韓國 K1 聯賽'
+};function zhName(v){return ZH[v]||v||''}
+
+const XM_TRANS_CACHE_KEY='xm_super_zh_tw_cache_v1';
+let XM_TRANS_CACHE={};
+try{XM_TRANS_CACHE=JSON.parse(localStorage.getItem(XM_TRANS_CACHE_KEY)||'{}')||{}}catch(e){XM_TRANS_CACHE={}}
+
+function looksChinese(s){return /[\u3400-\u9fff]/.test(String(s||''))}
+async function zhAuto(v){
+  v=String(v||'').trim();
+  if(!v)return '';
+  if(ZH[v])return ZH[v];
+  if(looksChinese(v))return v;
+  if(XM_TRANS_CACHE[v])return XM_TRANS_CACHE[v];
+  try{
+    const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(v)+'&langpair=en|zh-TW';
+    const r=await fetch(u,{cache:'force-cache'});
+    const j=await r.json();
+    let t=(j&&j.responseData&&j.responseData.translatedText)||v;
+    t=String(t).replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
+    if(t && t.toLowerCase()!==v.toLowerCase()){
+      XM_TRANS_CACHE[v]=t;
+      try{localStorage.setItem(XM_TRANS_CACHE_KEY,JSON.stringify(XM_TRANS_CACHE))}catch(e){}
+      return t;
+    }
+  }catch(e){}
+  return v;
+}
+
+const XM_ZH_TEXT={
+"Home":"主隊","Away":"客隊","Draw":"和局","Live":"比賽中","Finished":"已完場",
+"Not Started":"未開賽","Postponed":"延期","Cancelled":"取消","Canceled":"取消",
+"Halftime":"中場","Soccer":"足球","Basketball":"籃球","Baseball":"棒球",
+"American Football":"美式足球","Ice Hockey":"冰球","Tennis":"網球",
+"Volleyball":"排球","Motorsport":"賽車","Golf":"高爾夫","Fighting":"格鬥",
+"Rugby":"橄欖球","Cricket":"板球","Cycling":"自行車","Handball":"手球"
+};
+
+function zhStatus(v){const m={'Not Started':'未開賽','NS':'未開賽','Match Finished':'已完場','FT':'已完場','Finished':'已完場','Postponed':'延期','Cancelled':'取消','Canceled':'取消','In Progress':'比賽中','Live':'比賽中','Halftime':'中場'};return m[v]||v||''}
+let sport='Soccer',off=0;const se=document.querySelector('#sports'),ge=document.querySelector('#games');
+S.forEach(([id,n],i)=>{let b=document.createElement('button');b.className='b '+(!i?'on':'');b.textContent=n;b.onclick=()=>{[...se.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');sport=id;load()};se.appendChild(b)});
+document.querySelectorAll('#days button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#days button').forEach(x=>x.classList.remove('on'));b.classList.add('on');off=+b.dataset.o;load()});
+function ds(){let d=new Date();d.setDate(d.getDate()+off);return d.toISOString().slice(0,10)}function e(s=''){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function load(){
+  ge.className='empty';ge.textContent='載入中…';
+  try{
+    let r=await fetch(`${API}/eventsday.php?d=${ds()}&s=${encodeURIComponent(sport)}`),
+        j=await r.json(),a=j.events||[];
+    if(!a.length){ge.textContent='目前沒有可顯示的賽事';return}
+
+    // API 回傳的聯賽與隊名若是英文，動態翻成繁體中文並快取。
+    const rows=await Promise.all(a.map(async x=>{
+      const leagueRaw=x.strLeague||'其他';
+      const homeRaw=x.strHomeTeam||x.strEvent||'主隊';
+      const awayRaw=x.strAwayTeam||'客隊';
+      const [league,home,away]=await Promise.all([
+        zhAuto(leagueRaw),zhAuto(homeRaw),zhAuto(awayRaw)
+      ]);
+      return {x,league,home,away};
+    }));
+
+    ge.className='';let last='';
+    ge.innerHTML=rows.map(({x,league,home,away})=>{
+      let l=e(league),h=e(home),v=e(away),
+          sc=(x.intHomeScore!=null||x.intAwayScore!=null)?`${x.intHomeScore??''} : ${x.intAwayScore??''}`:'',
+          hd=l!==last?`<div class="league">${l}</div>`:'';
+      last=l;
+      return `${hd}<div class="game"><div class="meta">${ds()} ${(x.strTime||'').slice(0,5)} ${e(zhStatus(x.strStatus||''))}</div><div class="teams"><div><div class="team">${h}</div><div class="team">${v}</div></div><div class="score">${sc}</div></div><div class="picks"><button class="pick" onclick="pk(this)">${h}</button><button class="pick" onclick="pk(this)">${v}</button></div></div>`;
+    }).join('');
+  }catch(x){
+    ge.textContent='賽事資料暫時無法取得，請稍後再試。';
+  }
+}
+function pk(b){b.parentNode.querySelectorAll('.pick').forEach(x=>x.classList.remove('sel'));b.classList.add('sel')}load();
+</script>
+<script id="xm-sports-wallet-bridge">
+(function(){
+"use strict";
+const DB="https://xm-casino-default-rtdb.asia-southeast1.firebasedatabase.app";
+function safeKey(s){return encodeURIComponent(String(s)).replace(/\./g,"%2E")}
+function currentUser(){
+ const keys=["xm_current_user","xm_logged_user","xm_user","xm_login_user","xm_current_username"];
+ for(const k of keys){
+  try{
+   const v=localStorage.getItem(k); if(!v)continue;
+   try{const j=JSON.parse(v);return j.id||j.user||j.username||v}catch(e){return v}
+  }catch(e){}
+ }
+ try{const v=JSON.parse(localStorage.getItem("xm_demo_current_user")||"null");if(v)return typeof v==="string"?v:(v.id||v.user||v.username||"")}catch(e){}
+ return "";
+}
+async function sync(){
+ const el=document.getElementById("xmSportsWallet"),u=currentUser();
+ if(!el)return;
+ if(!u){el.textContent="體育錢包：0.00";return}
+ try{
+  const r=await fetch(DB+"/wallets/"+safeKey(u)+"/sports.json?ts="+Date.now(),{cache:"no-store"});
+  const n=Number(await r.json()||0);
+  el.textContent="體育錢包："+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ }catch(e){}
+}
+sync();setInterval(sync,5000);
+/* 原賽事來源每 5 分鐘刷新 */
+setInterval(function(){if(typeof load==="function")load()},300000);
+})();
+</script>
+</body></html>
